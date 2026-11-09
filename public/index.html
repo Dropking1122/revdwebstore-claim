@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REVDSTORE — Claim Hub Produk Digital</title>
+  <meta name="description" content="Akses akun & lisensi premium digital secara gratis tanpa ribet registrasi.">
+  
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sawit.revd.dev/">
+  <meta property="og:title" content="REVDSTORE — Claim Hub Produk Digital">
+  <meta property="og:description" content="Akses akun & lisensi premium digital secara gratis tanpa ribet registrasi.">
+  <meta property="og:image" content="https://sawit.revd.dev/uploads/og-banner.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="REVDSTORE">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://sawit.revd.dev/">
+  <meta name="twitter:title" content="REVDSTORE — Claim Hub Produk Digital">
+  <meta name="twitter:description" content="Akses akun & lisensi premium digital secara gratis tanpa ribet registrasi.">
+  <meta name="twitter:image" content="https://sawit.revd.dev/uploads/og-banner.png">
+  
+  <!-- Inline theme preloader to prevent theme flash -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('revd_theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark-mode');
+        document.body && document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=20261030_26">
+  <link id="site-favicon-link" rel="icon" href="/uploads/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+
+  <!-- Fullscreen Neobrutalist Preloader -->
+  <div id="app-preloader">
+    <div class="loader-box">
+      <div class="loader-spinner"></div>
+      <div class="loader-title" id="loader-status-text">MEMUAT SISTEM...</div>
+      <div class="loader-bar-wrap">
+        <div class="loader-bar-fill" id="loader-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="/" class="brand-logo">
+        <span id="site-header-name">REVDSTORE</span>
+        <span class="brand-tag" id="site-header-tag">CLAIM HUB</span>
+      </a>
+
+      <!-- Theme Toggle -->
+      <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle Mode Tampilan">
+        <span id="theme-icon-wrap">
+          <svg class="ui-icon" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </span>
+        <span id="theme-text">DARK</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="container" style="flex-grow: 1;">
+    
+    <!-- Running Announcement Ticker Bar (Text Berjalan) -->
+    <section class="ticker-section">
+      <div class="ticker-box">
+        <div class="ticker-badge">
+          <span class="ticker-badge-dot"></span>
+          <span>INFO</span>
+        </div>
+        <div class="ticker-track">
+          <div class="ticker-content">
+            <strong id="hero-banner-title">REVDSTORE HUB</strong>
+            <span class="ticker-divider">•</span>
+            <span id="hero-banner-desc">Akses akun premium secara gratis bisa kamu dapatkan cuma disini cuy</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: CATALOG -->
+    <section id="section-catalog">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 8px;">
+        <h2 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px;">
+          Katalog Produk Tersedia
+        </h2>
+        <span class="neo-badge badge-yellow">LIVE STOCK</span>
+      </div>
+
+      <!-- Category Filter Tabs (Semua / Gratis / Store) -->
+      <div class="store-tabs-wrapper" style="display: flex; gap: 8px; margin: 12px 0 16px 0; overflow-x: auto; padding-bottom: 4px;">
+        <button id="tab-filter-all" class="neo-btn neo-btn-yellow btn-sm" style="font-size: 0.8rem; padding: 6px 14px; font-weight: 800;">
+          Semua Produk
+        </button>
+        <button id="tab-filter-free" class="neo-btn neo-btn-white btn-sm" style="font-size: 0.8rem; padding: 6px 14px; font-weight: 800;">
+          🎁 Klaim Gratis
+        </button>
+        <button id="tab-filter-store" class="neo-btn neo-btn-white btn-sm" style="font-size: 0.8rem; padding: 6px 14px; font-weight: 800;">
+          🛒 Store (Berbayar)
+        </button>
+      </div>
+
+      <div id="products-container" class="products-grid">
+        <!-- Skeleton Loaders (default before API data) -->
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer" style="height: 24px; width: 65%; margin-bottom: 8px;"></div>
+          <div class="skeleton-shimmer" style="height: 32px; margin-bottom: 10px;"></div>
+          <div class="skeleton-shimmer" style="height: 44px; margin-bottom: 8px;"></div>
+          <div class="skeleton-shimmer" style="height: 36px; margin-top: 6px;"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer" style="height: 24px; width: 60%; margin-bottom: 8px;"></div>
+          <div class="skeleton-shimmer" style="height: 32px; margin-bottom: 10px;"></div>
+          <div class="skeleton-shimmer" style="height: 44px; margin-bottom: 8px;"></div>
+          <div class="skeleton-shimmer" style="height: 36px; margin-top: 6px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: CLAIM HISTORY -->
+    <section id="section-history" style="display: none; margin-top: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+        <h2 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
+          Riwayat Akun Tersimpan
+        </h2>
+        <button onclick="window.appSwitchToCatalog()" class="neo-btn neo-btn-white" style="font-size: 0.78rem; padding: 6px 12px;">
+          ← Kembali ke Katalog
+        </button>
+      </div>
+
+      <div id="history-container">
+        <!-- Loaded dynamically via app.js -->
+      </div>
+    </section>
+
+    <!-- SECTION 3: ABOUT & KONTAK -->
+    <section id="section-developer" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+        <h2 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px;">
+          ABOUT
+        </h2>
+        <span class="neo-badge badge-cyan">OFFICIAL</span>
+      </div>
+
+      <div class="dev-card-container">
+        <div class="dev-card">
+          <div class="dev-card-header">
+            <div class="dev-avatar">
+              <svg class="ui-icon" style="width: 28px; height: 28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div>
+              <h3 class="dev-name" id="display-dev-name">REVDSTORE</h3>
+              <div class="neo-badge badge-black" id="display-dev-role" style="font-size: 0.68rem; background: #0F0F0F; color: #FFF;">Official Digital Claim Hub</div>
+            </div>
+          </div>
+          
+          <div class="dev-card-body">
+            <p class="dev-bio" id="display-dev-bio">
+              Platform mandiri untuk penyediaan instan dan klaim lisensi akun digital premium gratis. Dibangun dengan fokus pada kecepatan, keamanan, dan keandalan tinggi.
+            </p>
+
+            <div class="contact-list">
+              <a href="https://t.me/ValltzID" target="_blank" rel="noopener" class="contact-item" id="link-dev-telegram">
+                <div class="contact-icon theme-cyan">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </div>
+                <div class="contact-info">
+                  <div class="contact-label">Telegram Admin</div>
+                  <div class="contact-val" id="text-dev-telegram">@ValltzID</div>
+                </div>
+                <span class="contact-badge">CHAT &rarr;</span>
+              </a>
+
+              <a href="https://instagram.com/revdstore.app" target="_blank" rel="noopener" class="contact-item" id="link-dev-instagram">
+                <div class="contact-icon theme-pink">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
+                </div>
+                <div class="contact-info">
+                  <div class="contact-label">Official Instagram</div>
+                  <div class="contact-val" id="text-dev-instagram">@revdstore.app</div>
+                </div>
+                <span class="contact-badge">FOLLOW &rarr;</span>
+              </a>
+
+              <a href="mailto:dev@revd.me" class="contact-item" id="link-dev-email">
+                <div class="contact-icon theme-yellow">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                </div>
+                <div class="contact-info">
+                  <div class="contact-label">Email Support</div>
+                  <div class="contact-val" id="text-dev-email">dev@revd.me</div>
+                </div>
+                <span class="contact-badge">KIRIM &rarr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile App Style Bottom Navigation Bar (4 Clean Tabs) -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button id="nav-catalog" class="nav-item active">
+        <svg class="ui-icon" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Katalog</span>
+      </button>
+
+      <button id="nav-history" class="nav-item">
+        <svg class="ui-icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>Riwayat</span>
+        <span id="history-badge-count" class="badge-count" style="display: none;">0</span>
+      </button>
+
+      <button id="nav-rules" class="nav-item">
+        <svg class="ui-icon" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <span>Ketentuan</span>
+      </button>
+
+      <button id="nav-developer" class="nav-item">
+        <svg class="ui-icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>About</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MODAL: Claim Result Detail -->
+  <div id="claim-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">DETAIL AKSES PRODUK</h3>
+        <button id="modal-close-btn" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div id="modal-body-content" class="modal-body">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Syarat & Ketentuan (Rules) -->
+  <div id="rules-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="rules-modal-title">Ketentuan Penggunaan & Klaim Akun</h3>
+        <button id="rules-modal-close" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" id="rules-modal-body" style="font-size: 0.88rem; line-height: 1.6;">
+        <div id="rules-modal-list" style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="neo-box" style="padding: 14px; background: var(--surface-box);">
+            <strong style="color: var(--text-main);">1. Batasan Akses Klaim Akun</strong><br>
+            Setiap alamat IP dan perangkat dibatasi kuota serta cooldown per produk untuk memastikan ketersediaan akses yang merata bagi seluruh pengguna. Anda tetap dapat mengklaim produk lain yang berbeda.
+          </div>
+          <div class="neo-box" style="padding: 14px; background: var(--surface-box);">
+            <strong style="color: var(--text-main);">2. Penyimpanan Akses Lokal &amp; Token</strong><br>
+            Sistem tidak mengharuskan registrasi akun. Detail akun atau lisensi yang telah Anda ambil otomatis tersimpan di peramban ini dan dapat dicek sewaktu-waktu pada tab <strong>Riwayat</strong> menggunakan Token Anda.
+          </div>
+          <div class="neo-box" style="padding: 14px; background: var(--surface-box);">
+            <strong style="color: var(--text-main);">3. Integritas Akun Bersama</strong><br>
+            Dilarang mengubah kata sandi, email pemulihan, atau informasi profil akun bersama. Pelanggaran aturan berakibat pemblokiran akses perangkat dan Token secara permanen.
+          </div>
+        </div>
+
+        <button id="rules-modal-ok" class="neo-btn neo-btn-yellow" style="width: 100%; margin-top: 18px;">
+          Saya Mengerti & Setuju
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Lihat Token Saya -->
+  <div id="view-token-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="neo-badge badge-yellow" style="font-size: 0.72rem; font-weight: 900;">IDENTITAS AKUN</span>
+          <h3 class="modal-title">TOKEN ANDA</h3>
+        </div>
+        <button id="view-token-close-btn" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 22px;">
+        <div class="neo-box" style="padding: 14px; background: var(--surface-box); margin-bottom: 16px; border-left: 6px solid var(--yellow);">
+          <div style="font-size: 0.85rem; font-weight: 900; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>ℹ️</span> FUNGSI TOKEN INI
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.55; margin: 0;">
+            Token adalah <strong>identitas unik peramban Anda</strong>. Setiap akun digital yang berhasil Anda klaim otomatis tersimpan di dalam token ini. Simpan atau salin token ini jika Anda ingin membuka kembali riwayat klaim di perangkat atau peramban lain melalui menu <em>Masukkan Token</em>.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: var(--text-main); letter-spacing: 0.4px;">
+            String Token Anda:
+          </label>
+          <div id="view-token-display" style="background: var(--surface-box); border: var(--border-thick); border-radius: 8px; padding: 12px 14px; font-family: ui-monospace, monospace; font-size: clamp(0.75rem, 3.2vw, 0.88rem); font-weight: 800; white-space: nowrap; overflow-x: auto; color: var(--text-main); box-shadow: 3px 3px 0px var(--shadow-color); user-select: all;">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; flex-wrap: wrap;">
+          <button type="button" id="view-token-cancel-btn" class="neo-btn neo-btn-white" style="font-size: 0.9rem; padding: 12px 20px; font-weight: 800;">
+            TUTUP
+          </button>
+          <button type="button" onclick="window.copyUserToken()" class="neo-btn neo-btn-yellow" style="font-size: 0.92rem; padding: 12px 24px; font-weight: 900;">
+            SALIN TOKEN
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Masukkan Token -->
+  <div id="restore-token-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="neo-badge badge-black" style="font-size: 0.72rem; font-weight: 900; background: #000; color: #fff;">SINKRONISASI</span>
+          <h3 class="modal-title">MASUKKAN TOKEN ANDA</h3>
+        </div>
+        <button id="restore-token-close-btn" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 22px;">
+        <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.92rem; line-height: 1.55;">
+          Punya Token dari perangkat atau peramban lain? Masukkan token Anda di bawah untuk memulihkan dan menyinkronkan seluruh riwayat akun klaim Anda.
+        </p>
+
+        <div style="margin-bottom: 16px;">
+          <label for="input-restore-token-modal" style="display: block; font-size: 0.82rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: var(--text-main); letter-spacing: 0.4px;">
+            Token Akun Anda:
+          </label>
+          <input 
+            type="text" 
+            id="input-restore-token-modal" 
+            class="neo-input" 
+            placeholder="usr_4ad1e556-25e0-44fc-839d-..." 
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            style="width: 100%; font-family: ui-monospace, monospace; font-size: clamp(0.82rem, 3.4vw, 0.95rem); font-weight: 800; padding: 14px 16px; letter-spacing: -0.01em;"
+          >
+          <small style="display: block; margin-top: 6px; font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">
+            Format token diawali dengan <code style="background: var(--surface-box); padding: 2px 6px; border-radius: 4px; font-weight: 800;">usr_...</code>
+          </small>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; flex-wrap: wrap;">
+          <button type="button" id="restore-token-cancel-btn" class="neo-btn neo-btn-white" style="font-size: 0.9rem; padding: 12px 20px; font-weight: 800;">
+            BATAL
+          </button>
+          <button type="button" onclick="window.submitRestoreTokenFromModal()" class="neo-btn neo-btn-yellow" style="font-size: 0.92rem; padding: 12px 24px; font-weight: 900;">
+            SINKRONKAN TOKEN
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Detail Akun Riwayat -->
+  <div id="history-detail-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal">
+      <div class="modal-header">
+        <h3 id="history-detail-title" class="modal-title">DETAIL KREDENSIAL AKUN</h3>
+        <button id="history-detail-close-btn" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div id="history-detail-content" class="modal-body">
+        <!-- Dynamically injected via window.showHistoryDetailModal(idx) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Checkout QRIS Store (Port 7000 ShopeePay) -->
+  <div id="checkout-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal" style="max-width: 460px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="neo-badge badge-yellow" style="font-size: 0.72rem; font-weight: 900;">QRIS INSTAN</span>
+          <h3 class="modal-title">PEMBAYARAN STORE</h3>
+        </div>
+        <button id="checkout-close-btn" class="modal-close-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px; text-align: center;">
+        <div id="checkout-product-name" style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase; margin-bottom: 4px;">-</div>
+        <div id="checkout-amount" style="font-size: 1.5rem; font-weight: 900; color: var(--text-main); margin-bottom: 14px;">Rp 0</div>
+
+        <div class="neo-box" style="padding: 16px; background: #fff; display: inline-block; margin-bottom: 14px; border-radius: 8px;">
+          <div id="checkout-qr-container" style="display: flex; justify-content: center; align-items: center; min-width: 200px; min-height: 200px;">
+            <img id="checkout-qr-img" src="" alt="QRIS Code" style="max-width: 220px; width: 100%; height: auto; display: block;">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 800; margin-bottom: 12px; color: var(--pink);">
+          <span>⏱️ Sisa Waktu Bayar:</span>
+          <span id="checkout-timer">15:00</span>
+        </div>
+
+        <div class="neo-box" style="padding: 10px; background: var(--surface-box); font-size: 0.78rem; text-align: left; margin-bottom: 16px; line-height: 1.45;">
+          <strong>Cara Bayar:</strong>
+          <ol style="margin: 4px 0 0 18px; padding: 0;">
+            <li>Buka BCA, Mandiri, ShopeePay, GoPay, OVO, Dana, dll.</li>
+            <li>Scan kode QRIS di atas.</li>
+            <li>Sistem otomatis mendeteksi pembayaran & langsung memberikan akun.</li>
+          </ol>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" id="checkout-cancel-btn" class="neo-btn neo-btn-white" style="flex: 1;">
+            BATAL
+          </button>
+          <button type="button" onclick="window.checkCurrentOrderStatus(true)" class="neo-btn neo-btn-yellow" style="flex: 1.3; font-weight: 900;">
+            CEK STATUS BAYAR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <script src="/js/app.js?v=20261030_26"></script>
+</body>
+</html>
