@@ -200,13 +200,31 @@
   const historyContainer = document.getElementById('history-container');
   const historyBadgeCount = document.getElementById('history-badge-count');
 
+  let siteSettings = {};
+
+  function formatDate(d) {
+    if (!d) return 'Baru saja';
+    try {
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return 'Baru saja';
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return 'Baru saja';
+    }
+  }
+
   // Load Dynamic Site Settings
   async function loadSiteSettings() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
       if (data.success && data.settings) {
-        const s = data.settings;
+        siteSettings = data.settings || {};
+        const s = siteSettings;
         if (s.site_title) {
           document.title = s.site_title;
         }
@@ -1826,43 +1844,47 @@
   let activeNotifications = [];
 
   function buildNotifications() {
-    const list = [
-      {
-        id: 'notif_welcome',
-        tag: 'PENGUMUMAN',
-        badgeClass: 'badge-cyan',
-        title: 'Selamat Datang di Hub Layanan',
-        time: 'Sistem',
-        desc: 'Jelajahi berbagai akun digital premium bergaransi dan nikmati kuota klaim gratis berkala setiap hari.'
+    try {
+      const list = [
+        {
+          id: 'notif_welcome',
+          tag: 'PENGUMUMAN',
+          badgeClass: 'badge-cyan',
+          title: 'Selamat Datang di Hub Layanan',
+          time: 'Sistem',
+          desc: 'Jelajahi berbagai akun digital premium bergaransi dan nikmati kuota klaim gratis berkala setiap hari.'
+        }
+      ];
+
+      if (siteSettings && siteSettings.promo_coupon_code) {
+        list.unshift({
+          id: 'notif_promo_' + siteSettings.promo_coupon_code,
+          tag: 'PROMO KHUSUS',
+          badgeClass: 'badge-yellow',
+          title: `Voucher Diskon ${siteSettings.promo_discount_percent || 10}% Aktif!`,
+          time: 'Terbatas',
+          desc: `Gunakan kode kupon "${siteSettings.promo_coupon_code}" saat pemesanan untuk potongan harga langsung.`
+        });
       }
-    ];
 
-    if (siteSettings && siteSettings.promo_coupon_code) {
-      list.unshift({
-        id: 'notif_promo_' + siteSettings.promo_coupon_code,
-        tag: 'PROMO KHUSUS',
-        badgeClass: 'badge-yellow',
-        title: `Voucher Diskon ${siteSettings.promo_discount_percent || 10}% Aktif!`,
-        time: 'Terbatas',
-        desc: `Gunakan kode kupon "${siteSettings.promo_coupon_code}" saat pemesanan untuk potongan harga langsung.`
-      });
+      if (cachedHistory && cachedHistory.length > 0) {
+        const latestOrder = cachedHistory[0];
+        const isPaid = latestOrder.is_paid || latestOrder.order_id;
+        list.unshift({
+          id: 'notif_order_' + (latestOrder.order_id || latestOrder.id),
+          tag: isPaid ? 'TRANSAKSI' : 'KLAIM',
+          badgeClass: 'badge-mint',
+          title: isPaid ? `Pesanan #${latestOrder.order_id || latestOrder.id} Siap Digunakan` : `Klaim ${latestOrder.product_name || 'Akun'} Berhasil`,
+          time: formatDate(latestOrder.created_at || latestOrder.claimed_at),
+          desc: `Akses akun Anda telah tersimpan dengan aman pada tab Riwayat.`
+        });
+      }
+
+      activeNotifications = list;
+      updateNotificationBadge();
+    } catch (e) {
+      console.warn('Gagal menyusun notifikasi:', e);
     }
-
-    if (cachedHistory && cachedHistory.length > 0) {
-      const latestOrder = cachedHistory[0];
-      const isPaid = latestOrder.is_paid || latestOrder.order_id;
-      list.unshift({
-        id: 'notif_order_' + (latestOrder.order_id || latestOrder.id),
-        tag: isPaid ? 'TRANSAKSI' : 'KLAIM',
-        badgeClass: 'badge-mint',
-        title: isPaid ? `Pesanan #${latestOrder.order_id || latestOrder.id} Siap Digunakan` : `Klaim ${latestOrder.product_name || 'Akun'} Berhasil`,
-        time: formatDate(latestOrder.created_at || latestOrder.claimed_at),
-        desc: `Akses akun Anda telah tersimpan dengan aman pada tab Riwayat.`
-      });
-    }
-
-    activeNotifications = list;
-    updateNotificationBadge();
   }
 
   function updateNotificationBadge() {
