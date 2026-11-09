@@ -40,6 +40,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20261030_26">
   <link id="site-favicon-link" rel="icon" href="/uploads/favicon.svg" type="image/svg+xml">
+  <!-- Google Identity Services for Google Login -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -147,80 +149,147 @@
       </div>
     </section>
 
-    <!-- SECTION 3: ABOUT & KONTAK -->
+    <!-- SECTION 3: AKUN & PROFIL -->
     <section id="section-developer" style="display: none;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; margin-bottom: 16px;">
         <h2 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px;">
-          ABOUT
+          AKUN PENGGUNA
         </h2>
-        <span class="neo-badge badge-cyan">OFFICIAL</span>
+        <span class="neo-badge badge-cyan" id="profile-status-badge">MODE TAMU</span>
       </div>
 
-      <div class="dev-card-container">
-        <div class="dev-card">
-          <div class="dev-card-header">
-            <div class="dev-avatar">
-              <svg class="ui-icon" style="width: 28px; height: 28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </div>
-            <div>
-              <h3 class="dev-name" id="display-dev-name">REVDSTORE</h3>
-              <div class="neo-badge badge-black" id="display-dev-role" style="font-size: 0.68rem; background: #0F0F0F; color: #FFF;">Official Digital Claim Hub</div>
+      <!-- Container: User Not Logged In (Guest View) -->
+      <div id="profile-guest-view" style="display: block;">
+        <!-- Card 1: Guest Token -->
+        <div class="neo-box" style="margin-bottom: 16px; padding: 18px; border-radius: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">ID TOKEN BROWSER (GUEST)</div>
+            <span class="neo-badge" style="font-size: 0.65rem; background: #e0f2fe; color: #0369a1; border-color: #0369a1;">AKTIF DI SINI</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="guest-token-display" readonly class="neo-input" style="font-family: monospace; font-size: 0.85rem; padding: 8px 12px; background: var(--surface-box);" />
+            <button class="neo-btn neo-btn-cyan" id="btn-copy-guest-token" style="padding: 8px 14px; font-size: 0.8rem; white-space: nowrap;">SALIN</button>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+            Token di atas menyimpan riwayat klaim & transaksi Anda di peramban ini. Saat Anda masuk atau mendaftar di bawah, seluruh riwayat ini otomatis terhubung ke akun Anda.
+          </p>
+        </div>
+
+        <!-- Card 2: Login / Register Form -->
+        <div class="neo-box" style="padding: 20px; border-radius: 12px; margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+            <button type="button" class="neo-btn neo-btn-mint" id="tab-auth-login" style="font-size: 0.85rem; padding: 10px;">MASUK</button>
+            <button type="button" class="neo-btn neo-btn-white" id="tab-auth-register" style="font-size: 0.85rem; padding: 10px;">DAFTAR BARU</button>
+          </div>
+
+          <!-- Google Auth Container -->
+          <div id="google-signin-section" style="margin-bottom: 16px;">
+            <div id="google-btn-container" style="display: flex; justify-content: center; min-height: 40px;"></div>
+            <div style="display: flex; align-items: center; margin: 14px 0;">
+              <div style="flex: 1; height: 1px; background: var(--border-color); opacity: 0.3;"></div>
+              <span style="padding: 0 10px; font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">ATAU DENGAN USERNAME</span>
+              <div style="flex: 1; height: 1px; background: var(--border-color); opacity: 0.3;"></div>
             </div>
           </div>
-          
-          <div class="dev-card-body">
-            <p class="dev-bio" id="display-dev-bio">
-              Platform mandiri untuk penyediaan instan dan klaim lisensi akun digital premium gratis. Dibangun dengan fokus pada kecepatan, keamanan, dan keandalan tinggi.
-            </p>
 
-            <div class="contact-list">
-              <a href="https://t.me/ValltzID" target="_blank" rel="noopener" class="contact-item" id="link-dev-telegram">
-                <div class="contact-icon theme-cyan">
-                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </div>
-                <div class="contact-info">
-                  <div class="contact-label">Telegram Admin</div>
-                  <div class="contact-val" id="text-dev-telegram">@ValltzID</div>
-                </div>
-                <span class="contact-badge">CHAT &rarr;</span>
-              </a>
+          <form id="auth-form" onsubmit="return false;">
+            <div id="auth-alert" style="display: none; padding: 10px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-bottom: 14px; border: 2px solid;"></div>
 
-              <a href="https://instagram.com/revdstore.app" target="_blank" rel="noopener" class="contact-item" id="link-dev-instagram">
-                <div class="contact-icon theme-pink">
-                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                  </svg>
-                </div>
-                <div class="contact-info">
-                  <div class="contact-label">Official Instagram</div>
-                  <div class="contact-val" id="text-dev-instagram">@revdstore.app</div>
-                </div>
-                <span class="contact-badge">FOLLOW &rarr;</span>
-              </a>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">Username</label>
+              <input type="text" id="auth-username" class="neo-input" placeholder="Masukkan username" autocomplete="username" required />
+            </div>
 
-              <a href="mailto:dev@revd.me" class="contact-item" id="link-dev-email">
-                <div class="contact-icon theme-yellow">
-                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                  </svg>
-                </div>
-                <div class="contact-info">
-                  <div class="contact-label">Email Support</div>
-                  <div class="contact-val" id="text-dev-email">dev@revd.me</div>
-                </div>
-                <span class="contact-badge">KIRIM &rarr;</span>
-              </a>
+            <div id="field-auth-email" style="display: none; margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">Email (Opsional)</label>
+              <input type="email" id="auth-email" class="neo-input" placeholder="email@contoh.com" autocomplete="email" />
+            </div>
+
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">Password</label>
+              <input type="password" id="auth-password" class="neo-input" placeholder="Minimal 6 karakter" autocomplete="current-password" required />
+            </div>
+
+            <button type="submit" id="btn-auth-submit" class="neo-btn neo-btn-cyan" style="width: 100%; padding: 12px; font-size: 0.95rem; font-weight: 800;">
+              MASUK KE AKUN
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Container: User Logged In (Member View) -->
+      <div id="profile-member-view" style="display: none;">
+        <!-- Card 1: User Info -->
+        <div class="neo-box" style="padding: 20px; border-radius: 12px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+            <div style="width: 52px; height: 52px; border-radius: 10px; background: var(--cyan); border: var(--border-thick); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 900; box-shadow: 2px 2px 0px var(--shadow-color);" id="profile-avatar-initial">
+              U
+            </div>
+            <div style="flex: 1; overflow: hidden;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="profile-member-username">username</h3>
+                <span class="neo-badge badge-mint" style="font-size: 0.65rem;" id="profile-member-type">MEMBER</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" id="profile-member-email">email@example.com</div>
             </div>
           </div>
+
+          <div style="background: var(--surface-box); border: 1.5px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOKEN AKUN PERMANEN</span>
+              <button class="neo-btn neo-btn-white" id="btn-copy-member-token" style="padding: 2px 8px; font-size: 0.7rem;">SALIN</button>
+            </div>
+            <div style="font-family: monospace; font-size: 0.8rem; word-break: break-all;" id="profile-member-token">usr_...</div>
+          </div>
+
+          <!-- Activity Summary Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: var(--surface-box); border: 1.5px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 0.68rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL KLAIM</div>
+              <div style="font-size: 1.25rem; font-weight: 900; margin-top: 2px;" id="profile-stat-claims">0</div>
+            </div>
+            <div style="background: var(--surface-box); border: 1.5px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 0.68rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL ORDER</div>
+              <div style="font-size: 1.25rem; font-weight: 900; margin-top: 2px;" id="profile-stat-orders">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Manual Import Token -->
+        <div class="neo-box" style="padding: 18px; border-radius: 12px; margin-bottom: 16px;">
+          <h4 style="margin: 0 0 6px 0; font-size: 0.88rem; font-weight: 800; text-transform: uppercase;">
+            SINKRONKAN DATA DARI TOKEN LAIN
+          </h4>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.4;">
+            Punya riwayat klaim atau pesanan di browser/HP lain? Masukkan tokennya untuk digabungkan ke akun ini.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="input-import-token" class="neo-input" placeholder="usr_xxxx..." style="padding: 8px 12px; font-size: 0.82rem; font-family: monospace;" />
+            <button class="neo-btn neo-btn-cyan" id="btn-run-import-token" style="padding: 8px 14px; font-size: 0.8rem; white-space: nowrap; font-weight: 800;">
+              IMPOR
+            </button>
+          </div>
+          <div id="import-token-alert" style="display: none; margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;"></div>
+        </div>
+
+        <!-- Card 3: Logout Button -->
+        <button type="button" class="neo-btn neo-btn-white" id="btn-auth-logout" style="width: 100%; padding: 12px; font-size: 0.9rem; font-weight: 800; color: #dc2626; border-color: #dc2626; margin-bottom: 16px;">
+          KELUAR DARI AKUN
+        </button>
+      </div>
+
+      <!-- Card Official Contacts -->
+      <div class="neo-box" style="padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+        <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+          LAYANAN BANTUAN & CS
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <a href="https://t.me/ValltzID" target="_blank" rel="noopener" class="neo-btn neo-btn-white" style="text-decoration: none; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 800; display: block;">
+            TELEGRAM CS
+          </a>
+          <a href="https://t.me/revdstore" target="_blank" rel="noopener" class="neo-btn neo-btn-white" style="text-decoration: none; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 800; display: block;">
+            CHANNEL RESMI
+          </a>
         </div>
       </div>
     </section>
@@ -261,11 +330,10 @@
 
       <button id="nav-developer" class="nav-item">
         <svg class="ui-icon" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
         </svg>
-        <span>About</span>
+        <span>Akun</span>
       </button>
     </div>
   </nav>

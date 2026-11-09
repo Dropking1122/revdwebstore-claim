@@ -72,6 +72,9 @@ CREATE INDEX IF NOT EXISTS idx_claim_logs_product_claimed_at ON claim_logs(produ
 
 CREATE TABLE IF NOT EXISTS customer_profiles (
     id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE,
+    password_hash VARCHAR(255),
+    user_token VARCHAR(128) UNIQUE,
     name TEXT NOT NULL,
     phone TEXT,
     email VARCHAR(255),

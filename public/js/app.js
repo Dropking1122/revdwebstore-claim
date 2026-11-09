@@ -238,6 +238,11 @@
           const el = document.getElementById('display-dev-role');
           if (el) el.textContent = s.dev_role;
         }
+        if (s.google_client_id) {
+          initGoogleAuth(s.google_client_id);
+        } else {
+          initGoogleAuth('');
+        }
         if (s.dev_bio) {
           const el = document.getElementById('display-dev-bio');
           if (el) el.textContent = s.dev_bio;
@@ -310,12 +315,12 @@
   const TAB_PATHS = {
     catalog: '/',
     history: '/riwayat',
-    developer: '/developer'
+    developer: '/akun'
   };
 
   function getTabFromPath(pathname) {
     if (pathname === '/riwayat' || pathname === '/history') return 'history';
-    if (pathname === '/developer') return 'developer';
+    if (pathname === '/developer' || pathname === '/akun' || pathname === '/profile' || pathname === '/profil') return 'developer';
     return 'catalog';
   }
 
@@ -336,6 +341,7 @@
     } else if (tab === 'developer') {
       if (navDeveloper) navDeveloper.classList.add('active');
       if (sectionDeveloper) sectionDeveloper.style.display = 'block';
+      renderProfileSection();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -1379,8 +1385,389 @@
     });
   }
 
+  // ====================================================
+  // USER AUTHENTICATION & PROFILE SYSTEM
+  // ====================================================
+  let currentUser = null;
+  let authMode = 'login'; // 'login' or 'register'
+  let googleClientId = '';
+
+  const profileGuestView = document.getElementById('profile-guest-view');
+  const profileMemberView = document.getElementById('profile-member-view');
+  const profileStatusBadge = document.getElementById('profile-status-badge');
+  const guestTokenDisplay = document.getElementById('guest-token-display');
+  const btnCopyGuestToken = document.getElementById('btn-copy-guest-token');
+
+  const tabAuthLogin = document.getElementById('tab-auth-login');
+  const tabAuthRegister = document.getElementById('tab-auth-register');
+  const authForm = document.getElementById('auth-form');
+  const authAlert = document.getElementById('auth-alert');
+  const authUsername = document.getElementById('auth-username');
+  const authEmail = document.getElementById('auth-email');
+  const authPassword = document.getElementById('auth-password');
+  const fieldAuthEmail = document.getElementById('field-auth-email');
+  const btnAuthSubmit = document.getElementById('btn-auth-submit');
+
+  const profileAvatarInitial = document.getElementById('profile-avatar-initial');
+  const profileMemberUsername = document.getElementById('profile-member-username');
+  const profileMemberEmail = document.getElementById('profile-member-email');
+  const profileMemberToken = document.getElementById('profile-member-token');
+  const profileMemberType = document.getElementById('profile-member-type');
+  const profileStatClaims = document.getElementById('profile-stat-claims');
+  const profileStatOrders = document.getElementById('profile-stat-orders');
+  const btnCopyMemberToken = document.getElementById('btn-copy-member-token');
+  const btnAuthLogout = document.getElementById('btn-auth-logout');
+
+  const inputImportToken = document.getElementById('input-import-token');
+  const btnRunImportToken = document.getElementById('btn-run-import-token');
+  const importTokenAlert = document.getElementById('import-token-alert');
+
+  function showAuthAlert(msg, isSuccess = false) {
+    if (!authAlert) return;
+    authAlert.style.display = 'block';
+    authAlert.style.background = isSuccess ? '#ecfdf5' : '#fef2f2';
+    authAlert.style.color = isSuccess ? '#065f46' : '#991b1b';
+    authAlert.style.borderColor = isSuccess ? '#059669' : '#dc2626';
+    authAlert.textContent = msg;
+  }
+
+  function hideAuthAlert() {
+    if (authAlert) authAlert.style.display = 'none';
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    hideAuthAlert();
+    if (mode === 'login') {
+      if (tabAuthLogin) {
+        tabAuthLogin.className = 'neo-btn neo-btn-mint';
+      }
+      if (tabAuthRegister) {
+        tabAuthRegister.className = 'neo-btn neo-btn-white';
+      }
+      if (fieldAuthEmail) fieldAuthEmail.style.display = 'none';
+      if (btnAuthSubmit) btnAuthSubmit.textContent = 'MASUK KE AKUN';
+    } else {
+      if (tabAuthRegister) {
+        tabAuthRegister.className = 'neo-btn neo-btn-mint';
+      }
+      if (tabAuthLogin) {
+        tabAuthLogin.className = 'neo-btn neo-btn-white';
+      }
+      if (fieldAuthEmail) fieldAuthEmail.style.display = 'block';
+      if (btnAuthSubmit) btnAuthSubmit.textContent = 'DAFTAR AKUN BARU';
+    }
+  }
+
+  if (tabAuthLogin) tabAuthLogin.addEventListener('click', () => setAuthMode('login'));
+  if (tabAuthRegister) tabAuthRegister.addEventListener('click', () => setAuthMode('register'));
+
+  function renderProfileSection() {
+    if (guestTokenDisplay) guestTokenDisplay.value = USER_TOKEN;
+
+    if (!currentUser) {
+      if (profileGuestView) profileGuestView.style.display = 'block';
+      if (profileMemberView) profileMemberView.style.display = 'none';
+      if (profileStatusBadge) {
+        profileStatusBadge.textContent = 'MODE TAMU';
+        profileStatusBadge.className = 'neo-badge badge-cyan';
+      }
+    } else {
+      if (profileGuestView) profileGuestView.style.display = 'none';
+      if (profileMemberView) profileMemberView.style.display = 'block';
+      if (profileStatusBadge) {
+        profileStatusBadge.textContent = 'MEMBER RESMI';
+        profileStatusBadge.className = 'neo-badge badge-mint';
+      }
+
+      const initial = (currentUser.name || currentUser.username || 'U')[0].toUpperCase();
+      if (profileAvatarInitial) profileAvatarInitial.textContent = initial;
+      if (profileMemberUsername) profileMemberUsername.textContent = '@' + currentUser.username;
+      if (profileMemberEmail) profileMemberEmail.textContent = currentUser.email || 'Tanpa Email';
+      if (profileMemberToken) profileMemberToken.textContent = currentUser.user_token;
+      if (profileMemberType) profileMemberType.textContent = currentUser.has_google ? 'GOOGLE SSO' : 'MEMBER';
+
+      if (currentUser.stats) {
+        if (profileStatClaims) profileStatClaims.textContent = currentUser.stats.total_claims || 0;
+        if (profileStatOrders) profileStatOrders.textContent = currentUser.stats.total_orders || 0;
+      }
+    }
+  }
+
+  async function checkUserAuth() {
+    try {
+      const token = localStorage.getItem('revd_auth_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/user/profile', { headers });
+      const data = await res.json();
+      if (data.success && data.user) {
+        currentUser = data.user;
+        USER_TOKEN = currentUser.user_token;
+        localStorage.setItem('revd_claim_token', USER_TOKEN);
+        sessionStorage.setItem('revd_claim_token', USER_TOKEN);
+      } else {
+        currentUser = null;
+      }
+    } catch (e) {
+      currentUser = null;
+    }
+    renderProfileSection();
+  }
+
+  // Handle Login / Register Submit
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAuthAlert();
+
+      const username = authUsername.value.trim();
+      const password = authPassword.value;
+      const email = authEmail ? authEmail.value.trim() : '';
+
+      if (!username || !password) {
+        showAuthAlert('Username dan password wajib diisi.');
+        return;
+      }
+
+      btnAuthSubmit.disabled = true;
+      btnAuthSubmit.textContent = 'MEMPROSES...';
+
+      const url = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const payload = {
+        username,
+        password,
+        guest_token: USER_TOKEN,
+      };
+      if (authMode === 'register' && email) payload.email = email;
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showAuthAlert(data.message || 'Gagal memproses autentikasi.');
+          btnAuthSubmit.disabled = false;
+          btnAuthSubmit.textContent = authMode === 'register' ? 'DAFTAR AKUN BARU' : 'MASUK KE AKUN';
+          return;
+        }
+
+        // Store tokens
+        localStorage.setItem('revd_auth_token', data.token);
+        currentUser = data.user;
+        USER_TOKEN = data.user.user_token;
+        localStorage.setItem('revd_claim_token', USER_TOKEN);
+        sessionStorage.setItem('revd_claim_token', USER_TOKEN);
+
+        authUsername.value = '';
+        authPassword.value = '';
+        if (authEmail) authEmail.value = '';
+
+        let succMsg = data.message || 'Berhasil masuk ke akun!';
+        if (data.migrated && (data.migrated.orders > 0 || data.migrated.claims > 0)) {
+          succMsg += ` (${data.migrated.orders} pesanan & ${data.migrated.claims} klaim browser disinkronkan)`;
+        }
+        showToast(succMsg, 'success');
+
+        await checkUserAuth();
+        loadHistory();
+        loadProducts();
+      } catch (err) {
+        showAuthAlert('Terjadi kesalahan jaringan.');
+      } finally {
+        btnAuthSubmit.disabled = false;
+        btnAuthSubmit.textContent = authMode === 'register' ? 'DAFTAR AKUN BARU' : 'MASUK KE AKUN';
+      }
+    });
+  }
+
+  // Handle Logout
+  if (btnAuthLogout) {
+    btnAuthLogout.addEventListener('click', async () => {
+      try {
+        const token = localStorage.getItem('revd_auth_token');
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+      } catch (e) {}
+
+      localStorage.removeItem('revd_auth_token');
+      currentUser = null;
+
+      // Generate fresh guest token
+      if (window.crypto && window.crypto.randomUUID) {
+        USER_TOKEN = 'usr_' + window.crypto.randomUUID();
+      } else {
+        USER_TOKEN = 'usr_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      }
+      localStorage.setItem('revd_claim_token', USER_TOKEN);
+      sessionStorage.setItem('revd_claim_token', USER_TOKEN);
+
+      showToast('Anda telah keluar dari akun. Mode tamu aktif kembali.', 'info');
+      renderProfileSection();
+      loadHistory();
+      loadProducts();
+    });
+  }
+
+  // Manual Token Import
+  if (btnRunImportToken && inputImportToken) {
+    btnRunImportToken.addEventListener('click', async () => {
+      const oldToken = inputImportToken.value.trim();
+      if (!oldToken || !oldToken.startsWith('usr_')) {
+        if (importTokenAlert) {
+          importTokenAlert.style.display = 'block';
+          importTokenAlert.style.background = '#fef2f2';
+          importTokenAlert.style.color = '#991b1b';
+          importTokenAlert.textContent = 'Token harus diawali usr_';
+        }
+        return;
+      }
+
+      btnRunImportToken.disabled = true;
+      btnRunImportToken.textContent = '...';
+
+      try {
+        const token = localStorage.getItem('revd_auth_token');
+        const res = await fetch('/api/user/import-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ old_token: oldToken }),
+        });
+        const data = await res.json();
+
+        if (importTokenAlert) {
+          importTokenAlert.style.display = 'block';
+          importTokenAlert.style.background = data.success ? '#ecfdf5' : '#fef2f2';
+          importTokenAlert.style.color = data.success ? '#065f46' : '#991b1b';
+          importTokenAlert.textContent = data.message;
+        }
+
+        if (data.success) {
+          inputImportToken.value = '';
+          showToast(data.message, 'success');
+          await checkUserAuth();
+          loadHistory();
+        }
+      } catch (err) {
+        if (importTokenAlert) {
+          importTokenAlert.style.display = 'block';
+          importTokenAlert.style.background = '#fef2f2';
+          importTokenAlert.style.color = '#991b1b';
+          importTokenAlert.textContent = 'Gagal memproses impor token.';
+        }
+      } finally {
+        btnRunImportToken.disabled = false;
+        btnRunImportToken.textContent = 'IMPOR';
+      }
+    });
+  }
+
+  // Copy Guest Token
+  if (btnCopyGuestToken && guestTokenDisplay) {
+    btnCopyGuestToken.addEventListener('click', () => {
+      copyToClipboard(guestTokenDisplay.value);
+      showToast('Token guest berhasil disalin ke clipboard!', 'success');
+    });
+  }
+
+  // Copy Member Token
+  if (btnCopyMemberToken && profileMemberToken) {
+    btnCopyMemberToken.addEventListener('click', () => {
+      copyToClipboard(profileMemberToken.textContent);
+      showToast('Token akun permanen berhasil disalin!', 'success');
+    });
+  }
+
+  // Google Sign-In Callback Handler
+  window.handleGoogleCredentialResponse = async function(response) {
+    if (!response || !response.credential) return;
+    try {
+      showToast('Memverifikasi akun Google...', 'info');
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: response.credential,
+          guest_token: USER_TOKEN,
+        }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        showToast(data.message || 'Login Google gagal.', 'error');
+        return;
+      }
+
+      localStorage.setItem('revd_auth_token', data.token);
+      currentUser = data.user;
+      USER_TOKEN = data.user.user_token;
+      localStorage.setItem('revd_claim_token', USER_TOKEN);
+      sessionStorage.setItem('revd_claim_token', USER_TOKEN);
+
+      let msg = 'Login Google berhasil!';
+      if (data.migrated && (data.migrated.orders > 0 || data.migrated.claims > 0)) {
+        msg += ` (${data.migrated.orders} order & ${data.migrated.claims} klaim disinkronkan)`;
+      }
+      showToast(msg, 'success');
+
+      await checkUserAuth();
+      loadHistory();
+      loadProducts();
+    } catch (err) {
+      showToast('Gagal memproses autentikasi Google.', 'error');
+    }
+  };
+
+  function initGoogleAuth(clientId) {
+    const sec = document.getElementById('google-signin-section');
+    if (!clientId) {
+      if (sec) sec.style.display = 'none';
+      return;
+    }
+    googleClientId = clientId;
+    if (sec) sec.style.display = 'block';
+
+    const checkGsi = setInterval(() => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        clearInterval(checkGsi);
+        try {
+          google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: window.handleGoogleCredentialResponse,
+          });
+          const btnCont = document.getElementById('google-btn-container');
+          if (btnCont) {
+            google.accounts.id.renderButton(btnCont, {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              width: 280,
+            });
+          }
+        } catch (e) {
+          console.error('Error initializing Google Sign-In:', e);
+        }
+      }
+    }, 200);
+
+    setTimeout(() => clearInterval(checkGsi), 5000);
+  }
+
   // Initial load
   loadSiteSettings();
+  checkUserAuth();
   const initialTab = getTabFromPath(window.location.pathname);
   if (window.history && window.history.replaceState) {
     window.history.replaceState({ tab: initialTab }, '', window.location.pathname);

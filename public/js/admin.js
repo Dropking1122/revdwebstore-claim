@@ -652,7 +652,8 @@
       const fields = [
         'brand_name', 'site_title', 'hero_title', 'hero_desc',
         'pg_hub_url', 'pg_api_key', 'telegram_channel', 'dev_telegram',
-        'telegram_bot_token', 'promo_coupon_code', 'promo_discount_percent'
+        'telegram_bot_token', 'promo_coupon_code', 'promo_discount_percent',
+        'google_client_id'
       ];
 
       fields.forEach(f => {

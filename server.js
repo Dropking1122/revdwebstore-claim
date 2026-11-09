@@ -217,7 +217,7 @@ async function renderApp(req, res) {
   }
 }
 
-app.get(['/', '/index.html', '/katalog', '/riwayat', '/history', '/developer'], renderApp);
+app.get(['/', '/index.html', '/katalog', '/riwayat', '/history', '/developer', '/akun', '/profil', '/profile'], renderApp);
 
 // Rate limiter for claim endpoint
 const claimLimiter = rateLimit({
@@ -290,6 +290,89 @@ function safeCompare(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+// Customer / User Session Store
+const activeUserSessions = new Map(); // token -> { userId, userToken, username, expiresAt }
+
+function createUserSession(user) {
+  const token = 'usr_sess_' + crypto.randomBytes(24).toString('hex');
+  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+  activeUserSessions.set(token, {
+    userId: user.id,
+    userToken: user.user_token,
+    username: user.username,
+    expiresAt,
+  });
+  return token;
+}
+
+function getUserFromSession(req) {
+  let token = req.cookies.customer_session || req.headers['x-auth-token'];
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.slice(7).trim();
+  }
+  if (!token) return null;
+  const sess = activeUserSessions.get(token);
+  if (!sess) return null;
+  if (Date.now() > sess.expiresAt) {
+    activeUserSessions.delete(token);
+    return null;
+  }
+  return sess;
+}
+
+function requireUser(req, res, next) {
+  const sess = getUserFromSession(req);
+  if (!sess) {
+    return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+  }
+  req.userSession = sess;
+  next();
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !storedHash.startsWith('scrypt:')) return false;
+  const parts = storedHash.split(':');
+  if (parts.length !== 3) return false;
+  const salt = parts[1];
+  const expectedHash = parts[2];
+  const actualHash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return crypto.timingSafeEqual(Buffer.from(actualHash, 'hex'), Buffer.from(expectedHash, 'hex'));
+}
+
+async function migrateGuestData(guestToken, targetUserToken, targetCustomerId) {
+  if (!guestToken || !targetUserToken || guestToken === targetUserToken) return { orders: 0, claims: 0 };
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const orderRes = await client.query(
+      `UPDATE orders 
+       SET user_token = $1, customer_id = $2 
+       WHERE user_token = $3`,
+      [targetUserToken, targetCustomerId, guestToken]
+    );
+    const claimRes = await client.query(
+      `UPDATE claim_logs 
+       SET user_token = $1 
+       WHERE user_token = $2`,
+      [targetUserToken, guestToken]
+    );
+    await client.query('COMMIT');
+    return { orders: orderRes.rowCount || 0, claims: claimRes.rowCount || 0 };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error migrating guest data:', err);
+    return { orders: 0, claims: 0 };
+  } finally {
+    client.release();
+  }
+}
+
 // Admin Auth Middleware
 function requireAdmin(req, res, next) {
   let token = req.cookies.admin_token || req.headers['x-admin-token'];
@@ -318,12 +401,14 @@ app.get('/api/config', async (req, res) => {
       hero_title: settings.hero_title || 'Katalog Produk Digital',
       hero_desc: settings.hero_desc || 'Layanan produk dan akun digital instan.',
       site_title: settings.site_title || 'REVDSTORE',
+      google_client_id: settings.google_client_id || '',
     });
   } catch (err) {
     res.json({ 
       brand_name: BRAND_NAME,
       telegram_channel: TELEGRAM_CHANNEL,
-      promo_coupon: PROMO_COUPON_CODE
+      promo_coupon: PROMO_COUPON_CODE,
+      google_client_id: '',
     });
   }
 });
@@ -337,6 +422,297 @@ app.get('/api/settings', async (req, res) => {
   } catch (err) {
     console.error('Error fetching settings:', err);
     res.status(500).json({ success: false, message: 'Gagal memuat pengaturan web.' });
+  }
+});
+
+// ----------------------------------------------------
+// CUSTOMER AUTHENTICATION & PROFILE ENDPOINTS
+// ----------------------------------------------------
+
+// Register Customer
+app.post('/api/auth/register', claimLimiter, async (req, res) => {
+  try {
+    const { username, password, email, name, guest_token } = req.body || {};
+    if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+      return res.status(400).json({ success: false, message: 'Username harus 3-30 karakter alfanumerik (huruf, angka, underscore).' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password minimal 6 karakter.' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanEmail = email && typeof email === 'string' && email.includes('@') ? email.trim().toLowerCase() : null;
+    const cleanName = name && typeof name === 'string' && name.trim() ? name.trim() : cleanUsername;
+
+    const existing = await db.query(
+      'SELECT id FROM customer_profiles WHERE LOWER(username) = $1 OR (email IS NOT NULL AND LOWER(email) = $2)',
+      [cleanUsername, cleanEmail || '']
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ success: false, message: 'Username atau email sudah digunakan.' });
+    }
+
+    const passwordHash = hashPassword(password);
+    const userToken = `usr_${crypto.randomUUID()}`;
+
+    const insertRes = await db.query(
+      `INSERT INTO customer_profiles (username, password_hash, user_token, name, email, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 'user', NOW(), NOW()) RETURNING id, username, name, email, user_token`,
+      [cleanUsername, passwordHash, userToken, cleanName, cleanEmail]
+    );
+
+    const user = insertRes.rows[0];
+
+    // Auto-migrate guest data if guest_token is present
+    let migrationStats = { orders: 0, claims: 0 };
+    if (guest_token && typeof guest_token === 'string' && guest_token.startsWith('usr_')) {
+      migrationStats = await migrateGuestData(guest_token.trim(), user.user_token, user.id);
+    }
+
+    const sessionToken = createUserSession(user);
+    res.cookie('customer_session', sessionToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+      secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    });
+
+    res.json({
+      success: true,
+      message: 'Pendaftaran berhasil.',
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        user_token: user.user_token,
+      },
+      token: sessionToken,
+      migrated: migrationStats,
+    });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ success: false, message: 'Gagal melakukan pendaftaran akun.' });
+  }
+});
+
+// Login Customer (Username / Email + Password)
+app.post('/api/auth/login', claimLimiter, async (req, res) => {
+  try {
+    const { username, password, guest_token } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+    }
+
+    const identifier = String(username).trim().toLowerCase();
+    const result = await db.query(
+      'SELECT * FROM customer_profiles WHERE LOWER(username) = $1 OR LOWER(email) = $1',
+      [identifier]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah.' });
+    }
+
+    const user = result.rows[0];
+    if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah.' });
+    }
+
+    if (!user.user_token) {
+      user.user_token = `usr_${crypto.randomUUID()}`;
+      await db.query('UPDATE customer_profiles SET user_token = $1 WHERE id = $2', [user.user_token, user.id]);
+    }
+
+    let migrationStats = { orders: 0, claims: 0 };
+    if (guest_token && typeof guest_token === 'string' && guest_token.startsWith('usr_') && guest_token.trim() !== user.user_token) {
+      migrationStats = await migrateGuestData(guest_token.trim(), user.user_token, user.id);
+    }
+
+    const sessionToken = createUserSession(user);
+    res.cookie('customer_session', sessionToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+      secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    });
+
+    res.json({
+      success: true,
+      message: 'Login berhasil.',
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        user_token: user.user_token,
+      },
+      token: sessionToken,
+      migrated: migrationStats,
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: 'Gagal melakukan login.' });
+  }
+});
+
+// Google Sign-In Authentication
+app.post('/api/auth/google', claimLimiter, async (req, res) => {
+  try {
+    const { credential, guest_token } = req.body || {};
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({ success: false, message: 'Token Google tidak valid.' });
+    }
+
+    const gRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    if (!gRes.ok) {
+      return res.status(401).json({ success: false, message: 'Verifikasi akun Google gagal.' });
+    }
+
+    const gData = await gRes.json();
+    const googleId = gData.sub;
+    const email = gData.email ? gData.email.toLowerCase() : null;
+    const name = gData.name || (email ? email.split('@')[0] : 'Google User');
+
+    if (!googleId || !email) {
+      return res.status(400).json({ success: false, message: 'Data profil Google tidak lengkap.' });
+    }
+
+    let userRes = await db.query(
+      'SELECT * FROM customer_profiles WHERE google_id = $1 OR LOWER(email) = $2',
+      [googleId, email]
+    );
+
+    let user;
+    if (userRes.rows.length > 0) {
+      user = userRes.rows[0];
+      if (!user.google_id) {
+        await db.query('UPDATE customer_profiles SET google_id = $1, updated_at = NOW() WHERE id = $2', [googleId, user.id]);
+        user.google_id = googleId;
+      }
+      if (!user.user_token) {
+        user.user_token = `usr_${crypto.randomUUID()}`;
+        await db.query('UPDATE customer_profiles SET user_token = $1 WHERE id = $2', [user.user_token, user.id]);
+      }
+    } else {
+      const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
+      const cleanUsername = `${baseUsername}_${googleId.slice(-4)}`;
+      const userToken = `usr_${crypto.randomUUID()}`;
+
+      const insertRes = await db.query(
+        `INSERT INTO customer_profiles (username, name, email, google_id, user_token, role, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, 'user', NOW(), NOW()) RETURNING *`,
+        [cleanUsername, name, email, googleId, userToken]
+      );
+      user = insertRes.rows[0];
+    }
+
+    let migrationStats = { orders: 0, claims: 0 };
+    if (guest_token && typeof guest_token === 'string' && guest_token.startsWith('usr_') && guest_token.trim() !== user.user_token) {
+      migrationStats = await migrateGuestData(guest_token.trim(), user.user_token, user.id);
+    }
+
+    const sessionToken = createUserSession(user);
+    res.cookie('customer_session', sessionToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+      secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    });
+
+    res.json({
+      success: true,
+      message: 'Login Google berhasil.',
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        user_token: user.user_token,
+      },
+      token: sessionToken,
+      migrated: migrationStats,
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ success: false, message: 'Gagal memproses login Google.' });
+  }
+});
+
+// Logout Customer
+app.post('/api/auth/logout', (req, res) => {
+  let token = req.cookies.customer_session || req.headers['x-auth-token'];
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.slice(7).trim();
+  }
+  if (token) {
+    activeUserSessions.delete(token);
+  }
+  res.clearCookie('customer_session');
+  res.json({ success: true, message: 'Logout berhasil.' });
+});
+
+// Get Customer Profile (Session / Authenticated)
+app.get('/api/user/profile', requireUser, async (req, res) => {
+  try {
+    const userRes = await db.query(
+      'SELECT id, username, name, email, google_id, user_token, created_at FROM customer_profiles WHERE id = $1',
+      [req.userSession.userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+    }
+
+    const user = userRes.rows[0];
+
+    const claimsCount = await db.query('SELECT COUNT(id)::INT AS total FROM claim_logs WHERE user_token = $1', [user.user_token]);
+    const ordersCount = await db.query('SELECT COUNT(id)::INT AS total FROM orders WHERE user_token = $1', [user.user_token]);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        has_google: !!user.google_id,
+        user_token: user.user_token,
+        created_at: user.created_at,
+        stats: {
+          total_claims: claimsCount.rows[0].total || 0,
+          total_orders: ordersCount.rows[0].total || 0,
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching user profile:', err);
+    res.status(500).json({ success: false, message: 'Gagal memuat profil user.' });
+  }
+});
+
+// Manual Import Token into Authenticated Account
+app.post('/api/user/import-token', requireUser, async (req, res) => {
+  try {
+    const { old_token } = req.body || {};
+    if (!old_token || typeof old_token !== 'string' || !old_token.trim().startsWith('usr_')) {
+      return res.status(400).json({ success: false, message: 'Format token lama tidak valid (harus diawali usr_).' });
+    }
+
+    const cleanOld = old_token.trim();
+    if (cleanOld === req.userSession.userToken) {
+      return res.status(400).json({ success: false, message: 'Token tersebut adalah token akun Anda saat ini.' });
+    }
+
+    const stats = await migrateGuestData(cleanOld, req.userSession.userToken, req.userSession.userId);
+    res.json({
+      success: true,
+      message: `Sinkronisasi selesai! ${stats.orders} pesanan dan ${stats.claims} klaim berhasil dipindahkan ke akun Anda.`,
+      stats,
+    });
+  } catch (err) {
+    console.error('Error importing token:', err);
+    res.status(500).json({ success: false, message: 'Gagal mengimpor token.' });
   }
 });
 
