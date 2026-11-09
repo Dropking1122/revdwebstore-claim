@@ -3,93 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Pengelola — REVDSTORE Claim Hub</title>
-  
-  <!-- Inline theme preloader to prevent flash -->
-  <script>
-    (function() {
-      const savedTheme = localStorage.getItem('revd_theme');
-      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark-mode');
-        document.body && document.body.classList.add('dark-mode');
-      }
-    })();
-  </script>
-
-  <!-- Fonts & Styles -->
+  <title>REVDSTORE — Control Panel &amp; Manajemen</title>
+  <link rel="icon" type="image/svg+xml" href="/uploads/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20261030_29">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=20261109_02">
   <style>
+    .stat-card {
+      background: var(--surface);
+      border: var(--border-thick);
+      box-shadow: var(--shadow-sm);
+      border-radius: 8px;
+    }
+    .stat-val {
+      font-weight: 900;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
     .admin-nav-container {
       margin-bottom: 20px;
       border-bottom: var(--border-thick);
-      padding-bottom: 10px;
-      position: relative;
+      padding-bottom: 12px;
     }
     .admin-nav {
       display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      gap: 10px;
+      gap: 8px;
       overflow-x: auto;
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      padding: 2px 2px 4px 2px;
+      padding-bottom: 4px;
     }
-    .admin-nav::-webkit-scrollbar {
-      display: none;
-    }
-    .admin-nav .neo-btn {
+    .admin-nav button {
       white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .form-group {
-      margin-bottom: 14px;
-    }
-    .form-group label {
-      display: block;
+      font-size: 0.82rem;
+      padding: 8px 14px;
       font-weight: 800;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      margin-bottom: 6px;
-      color: var(--text-main);
     }
-    .form-control {
-      width: 100%;
-      padding: 10px 12px;
-      font-family: inherit;
-      font-weight: 700;
-      border: var(--border-thick);
-      border-radius: 6px;
+    .admin-prods-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .admin-prod-card {
       background: var(--surface);
-      color: var(--text-main);
-      box-shadow: 2px 2px 0px var(--shadow-color);
-      font-size: 0.9rem;
-    }
-    .form-control:focus {
-      outline: none;
-      background: var(--surface-box);
-      box-shadow: 4px 4px 0px var(--shadow-color);
-    }
-    .stat-card {
-      padding: 16px;
       border: var(--border-thick);
       border-radius: 8px;
-      background: var(--surface);
+      padding: 14px 16px;
       box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
     }
-    .stat-val {
-      font-size: 1.85rem;
-      font-weight: 900;
-      line-height: 1.1;
-      margin-top: 4px;
-      color: var(--text-main);
+    .admin-order-row {
+      background: var(--surface);
+      border: var(--border-thick);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .admin-table {
       width: 100%;
@@ -97,69 +73,73 @@
       font-size: 0.85rem;
     }
     .admin-table th, .admin-table td {
-      border: 1.5px solid var(--border-color);
-      padding: 8px 10px;
+      padding: 10px 12px;
+      border: var(--border-thick);
       text-align: left;
     }
     .admin-table th {
-      background: var(--yellow);
-      color: #0F0F0F;
+      background: var(--surface-box);
       font-weight: 900;
       text-transform: uppercase;
-      font-size: 0.75rem;
+      font-size: 0.76rem;
+      letter-spacing: 0.5px;
+    }
+    .variant-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border: var(--border-thick);
+      border-radius: 6px;
+      background: var(--surface-box);
     }
   </style>
 </head>
-<body>
+<body class="theme-default">
 
-  <!-- Fullscreen Preloader -->
-  <div id="app-preloader">
-    <div class="loader-box">
-      <div class="loader-spinner"></div>
-      <div class="loader-title" id="admin-loader-status-text">MEMUAT PANEL ADMIN...</div>
-      <div class="loader-bar-wrap">
-        <div class="loader-bar-fill" id="admin-loader-progress-bar"></div>
-      </div>
+  <!-- PRELOADER -->
+  <div id="app-preloader" class="preloader-overlay">
+    <div class="preloader-card">
+      <div class="preloader-spinner"></div>
+      <div class="preloader-title">MEMUAT PANEL PENGELOLA</div>
+      <div class="preloader-subtitle">Menyiapkan data toko dan analitik...</div>
     </div>
   </div>
 
-  <!-- Header -->
-  <header class="site-header">
-    <div class="nav-wrap" style="flex-wrap: wrap; gap: 8px;">
-      <div class="brand-logo">
-        <span>REVDSTORE</span>
-        <span class="brand-tag">PENGELOLA</span>
-      </div>
-
-      <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-        <button id="admin-theme-btn" class="theme-toggle-btn" aria-label="Toggle Mode Tampilan">
-          <span id="admin-theme-icon-wrap">
-            <svg class="ui-icon" viewBox="0 0 24 24">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </span>
-        </button>
-        <a href="/" target="_blank" class="neo-btn neo-btn-cyan btn-sm" style="font-size: 0.72rem; padding: 6px 10px;">
-          Web Publik ↗
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-container" style="max-width: 1100px;">
+      <a href="/admin" class="brand" style="text-decoration: none;">
+        <div class="brand-badge">ADMIN</div>
+        <span class="brand-text">CONTROL PANEL</span>
+      </a>
+      <div class="header-actions">
+        <a href="/" target="_blank" class="neo-btn neo-btn-white btn-sm" style="font-size: 0.78rem;">
+          Lihat Web ↗
         </a>
-        <button id="logout-btn" class="neo-btn neo-btn-pink btn-sm" style="display: none; font-size: 0.72rem; padding: 6px 10px;">
-          Keluar
+        <button id="theme-toggle-btn" class="neo-btn btn-sm" aria-label="Toggle Theme">
+          MODE
+        </button>
+        <button id="logout-btn" class="neo-btn neo-btn-pink btn-sm" style="display: none;">
+          KELUAR
         </button>
       </div>
     </div>
   </header>
 
-  <main class="container" style="flex-grow: 1; padding-top: 20px; padding-bottom: 40px;">
+  <!-- MAIN WRAPPER -->
+  <main class="main-content" style="max-width: 1100px; margin: 0 auto; padding: 20px 16px;">
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-view" style="max-width: 440px; margin: 40px auto;">
-      <div class="neo-box account-key-box" style="padding: 28px 24px;">
-        <div style="text-align: center; margin-bottom: 22px;">
-          <div class="neo-badge badge-yellow" style="margin-bottom: 12px; font-size: 0.75rem;">
-            SECURITY GATE
-          </div>
-          <h2 style="font-size: 1.35rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px;">Autentikasi Pengelola</h2>
-          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 6px;">Masukkan Token pengelola untuk membuka kontrol sistem.</p>
+    <!-- VIEW 1: LOGIN -->
+    <div id="login-view" style="display: block; max-width: 420px; margin: 60px auto;">
+      <div class="neo-box" style="padding: 28px 24px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="font-size: 1.35rem; font-weight: 900; text-transform: uppercase;">
+            Autentikasi Pengelola
+          </h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+            Masukkan token otorisasi sistem untuk mengakses kontrol panel.
+          </p>
         </div>
 
         <form id="admin-login-form">
@@ -173,76 +153,144 @@
             </div>
           </div>
           <button type="submit" class="neo-btn neo-btn-yellow" style="width: 100%; margin-top: 14px; padding: 12px; font-size: 0.95rem; font-weight: 900;">
-            VERIFIKASI TOKEN
+            MASUK PANEL
           </button>
         </form>
       </div>
     </div>
 
-    <!-- MAIN ADMIN DASHBOARD -->
+    <!-- VIEW 2: DASHBOARD UTAMA -->
     <div id="dashboard-view" style="display: none;">
 
-      <!-- Operational Stats Grid (2 Columns on Mobile) -->
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;">
-        <div class="stat-card" style="border-top: 5px solid var(--yellow); padding: 12px;">
-          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL PRODUK</div>
-          <div id="stat-products" class="stat-val" style="font-size: 1.5rem;">0</div>
+      <!-- Operational Stats Grid (Metrics Penjualan & Klaim) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div class="stat-card" style="border-top: 5px solid var(--yellow); padding: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL OMSET (GMV)</div>
+          <div id="stat-revenue" class="stat-val" style="font-size: 1.35rem;">Rp 0</div>
         </div>
-        <div class="stat-card" style="border-top: 5px solid var(--mint); padding: 12px;">
-          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">SLOT KUOTA AKTIF</div>
-          <div id="stat-slots" class="stat-val" style="font-size: 1.5rem;">0</div>
+        <div class="stat-card" style="border-top: 5px solid var(--mint); padding: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">PESANAN LUNAS</div>
+          <div id="stat-paid-orders" class="stat-val" style="font-size: 1.35rem;">0</div>
         </div>
-        <div class="stat-card" style="border-top: 5px solid var(--cyan); padding: 12px;">
-          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL TERKLAIM</div>
-          <div id="stat-claimed" class="stat-val" style="font-size: 1.5rem;">0</div>
+        <div class="stat-card" style="border-top: 5px solid var(--pink); padding: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">MENUNGGU BAYAR</div>
+          <div id="stat-unpaid-orders" class="stat-val" style="font-size: 1.35rem;">0</div>
         </div>
-        <div class="stat-card" style="border-top: 5px solid var(--pink); padding: 12px;">
+        <div class="stat-card" style="border-top: 5px solid var(--cyan); padding: 14px;">
           <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">KLAIM HARI INI</div>
-          <div id="stat-today" class="stat-val" style="font-size: 1.5rem;">0</div>
+          <div id="stat-today" class="stat-val" style="font-size: 1.35rem;">0</div>
+        </div>
+        <div class="stat-card" style="border-top: 5px solid var(--purple); padding: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL KLAIM</div>
+          <div id="stat-claimed" class="stat-val" style="font-size: 1.35rem;">0</div>
+        </div>
+        <div class="stat-card" style="border-top: 5px solid var(--border-color); padding: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">STOK TERSEDIA</div>
+          <div id="stat-slots" class="stat-val" style="font-size: 1.35rem;">0</div>
         </div>
       </div>
 
-      <!-- Navigation Tabs (Kesamping & Slideable / Horizontal Scroll) -->
+      <!-- Navigation Tabs -->
       <div class="admin-nav-container">
         <div class="admin-nav">
-          <button id="admin-tab-products" class="neo-btn neo-btn-yellow btn-sm">
-            Manajemen Produk
+          <button id="admin-tab-stats" class="neo-btn neo-btn-yellow btn-sm">
+            Ringkasan &amp; Analitik
+          </button>
+          <button id="admin-tab-products" class="neo-btn neo-btn-white btn-sm">
+            Katalog &amp; Varian
+          </button>
+          <button id="admin-tab-orders" class="neo-btn neo-btn-white btn-sm">
+            Transaksi QRIS
           </button>
           <button id="admin-tab-logs" class="neo-btn neo-btn-white btn-sm">
-            Log Riwayat Klaim
+            Log Klaim Gratis
           </button>
           <button id="admin-tab-settings" class="neo-btn neo-btn-white btn-sm">
-            Pengaturan Web &amp; Dev
-          </button>
-          <button id="admin-tab-backup" class="neo-btn neo-btn-white btn-sm">
-            💾 Backup Database
+            Pengaturan Sistem
           </button>
         </div>
       </div>
 
-      <!-- TAB 1: PRODUCTS VIEW (RESPONSIVE CARDS - BUTTONS BELOW TITLE) -->
-      <div id="admin-section-products">
+      <!-- SECTION 0: STATS & OVERVIEW -->
+      <div id="admin-section-stats">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <!-- Recent Orders -->
+          <div class="neo-box" style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; text-transform: uppercase;">Transaksi Berbayar Terbaru</h4>
+              <button onclick="window.switchTab('orders')" class="neo-btn neo-btn-white btn-sm" style="font-size: 0.72rem;">Semua Pesanan →</button>
+            </div>
+            <div id="stats-recent-orders-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Memuat riwayat transaksi...</div>
+            </div>
+          </div>
+
+          <!-- Recent Claims -->
+          <div class="neo-box" style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; text-transform: uppercase;">Klaim Gratis Terbaru</h4>
+              <button onclick="window.switchTab('logs')" class="neo-btn neo-btn-white btn-sm" style="font-size: 0.72rem;">Semua Log →</button>
+            </div>
+            <div id="stats-recent-claims-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Memuat log klaim...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: PRODUCTS & VARIANTS VIEW -->
+      <div id="admin-section-products" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-          <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
-            Daftar Produk Aktif
-          </h3>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
+              Manajemen Produk &amp; Stok Varian
+            </h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">
+              Kelola produk digital, varian paket harga, dan stok akun.
+            </span>
+          </div>
           <button id="btn-add-product" class="neo-btn neo-btn-yellow btn-sm">
             + Tambah Produk Baru
           </button>
         </div>
 
-        <!-- Products Responsive Card Container -->
         <div id="products-cards-container" class="admin-prods-container">
           <!-- Loaded dynamically -->
         </div>
       </div>
 
-      <!-- TAB 2: LOGS VIEW (RESPONSIVE CARDS - NO HORIZONTAL SCROLL) -->
+      <!-- SECTION 2: ORDERS VIEW -->
+      <div id="admin-section-orders" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
+              Riwayat Transaksi QRIS ShopeePay
+            </h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">
+              Daftar pesanan toko melalui gateway pembayaran port 7000.
+            </span>
+          </div>
+          <button onclick="window.loadOrders()" class="neo-btn neo-btn-white btn-sm">
+            Segarkan Data ↺
+          </button>
+        </div>
+
+        <div id="orders-list-container">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+
+      <!-- SECTION 3: LOGS VIEW -->
       <div id="admin-section-logs" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-          <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
-            Log Aktivitas Klaim
-          </h3>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
+              Audit Log Klaim Gratis
+            </h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">
+              Catatan perangkat, IP, dan token pengguna yang mengklaim akun gratis.
+            </span>
+          </div>
           <button onclick="window.loadLogs()" class="neo-btn neo-btn-white btn-sm">
             Segarkan Data ↺
           </button>
@@ -253,248 +301,147 @@
         </div>
       </div>
 
-      <!-- TAB 3: SETTINGS VIEW (LOGO, FAVICON, DEV INFO & CONTACTS) -->
+      <!-- SECTION 4: SYSTEM SETTINGS (ZERO HARDCODE) -->
       <div id="admin-section-settings" style="display: none;">
-        <div class="neo-box" style="padding: 20px; max-width: 650px;">
+        <div class="neo-box" style="padding: 24px; max-width: 720px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
-              Pengaturan Web & Info Developer
+              Pengaturan Sistem &amp; Integrasi Dinamis
             </h3>
-            <span class="neo-badge badge-yellow">SISTEM</span>
+            <span class="neo-badge badge-yellow">DATABASE SETTINGS</span>
           </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+            Seluruh parameter di bawah ini disimpan langsung di tabel database tanpa hardcode.
+          </p>
 
           <form id="site-settings-form">
-            <!-- Branding -->
-            <div style="border-bottom: var(--border-thick); padding-bottom: 14px; margin-bottom: 14px;">
-              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 10px; text-transform: uppercase;">
-                1. Identitas Website & Favicon
+            <!-- 1. IDENTITAS & BRANDING -->
+            <div style="border-bottom: var(--border-thick); padding-bottom: 16px; margin-bottom: 18px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 12px; text-transform: uppercase;">
+                1. Identitas Brand &amp; Tampilan
               </h4>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                  <label for="setting-site-name">Nama Web (Header)</label>
-                  <input type="text" id="setting-site-name" class="form-control" value="REVDSTORE" required>
+                  <label for="setting-brand-name">Nama Brand / Toko</label>
+                  <input type="text" id="setting-brand-name" name="brand_name" class="form-control" placeholder="REVDSTORE" required>
                 </div>
                 <div class="form-group">
-                  <label for="setting-site-tag">Tag Subheader</label>
-                  <input type="text" id="setting-site-tag" class="form-control" value="CLAIM HUB" required>
+                  <label for="setting-site-title">Title Bar Halaman Web</label>
+                  <input type="text" id="setting-site-title" name="site_title" class="form-control" placeholder="REVDSTORE — Official WebStore &amp; Claim Hub">
                 </div>
               </div>
-
               <div class="form-group">
-                <label for="setting-site-title">Titel Browser Tab / Meta Social (&lt;title&gt;)</label>
-                <input type="text" id="setting-site-title" class="form-control" value="REVDSTORE — Claim Hub Produk Digital" placeholder="REVDSTORE — Claim Hub Produk Digital" required>
+                <label for="setting-hero-title">Judul Utama (Hero Header)</label>
+                <input type="text" id="setting-hero-title" name="hero_title" class="form-control" placeholder="Katalog Produk Digital">
               </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
-                <div class="form-group">
-                  <label for="setting-hero-title">Judul Banner Hero</label>
-                  <input type="text" id="setting-hero-title" class="form-control" value="REVDSTORE FREE" placeholder="REVDSTORE FREE">
-                </div>
-                <div class="form-group">
-                  <label for="setting-hero-desc">Deskripsi Banner Hero</label>
-                  <input type="text" id="setting-hero-desc" class="form-control" value="Akses akun premium secara gratis bisa kamu dapatkan cuma disini cuy" placeholder="Deskripsi singkat...">
-                </div>
-              </div>
-
               <div class="form-group">
-                <label for="setting-site-favicon">Favicon Browser (Upload File atau URL)</label>
-                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-                  <input type="text" id="setting-site-favicon" class="form-control" style="flex: 1;" placeholder="/uploads/favicon.svg">
-                  <label class="neo-btn neo-btn-cyan" style="cursor: pointer; padding: 8px 12px; font-size: 0.8rem; margin: 0; white-space: nowrap;">
-                    Pilih File
-                    <input type="file" id="setting-favicon-file" accept="image/*" style="display: none;">
-                  </label>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <div style="width: 36px; height: 36px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--surface-box); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                    <img id="setting-favicon-preview" src="/uploads/favicon.svg" style="width: 100%; height: 100%; object-fit: contain;">
-                  </div>
-                  <span style="font-size: 0.78rem; color: var(--text-muted);">Ikon kecil pada tab browser (SVG, PNG, ICO).</span>
-                </div>
+                <label for="setting-hero-desc">Deskripsi Singkat (Hero Subtitle)</label>
+                <textarea id="setting-hero-desc" name="hero_desc" class="form-control" rows="2" placeholder="Layanan produk dan akun digital instan."></textarea>
               </div>
             </div>
 
-            <!-- Developer & Contact -->
-            <div style="margin-bottom: 14px;">
-              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 10px; text-transform: uppercase;">
-                2. Profil Developer & Saluran Kontak
+            <!-- 2. PAYMENT GATEWAY (PORT 7000 QRIS SHOPEEPAY) -->
+            <div style="border-bottom: var(--border-thick); padding-bottom: 16px; margin-bottom: 18px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 12px; text-transform: uppercase;">
+                2. Gateway Pembayaran QRIS ShopeePay (Port 7000)
               </h4>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div class="form-group">
-                  <label for="setting-dev-name">Nama Developer</label>
-                  <input type="text" id="setting-dev-name" class="form-control" value="Valltz / REVD Dev" required>
-                </div>
-                <div class="form-group">
-                  <label for="setting-dev-role">Role / Profesi</label>
-                  <input type="text" id="setting-dev-role" class="form-control" value="Fullstack & Systems Engineer" required>
-                </div>
-              </div>
-
               <div class="form-group">
-                <label for="setting-dev-bio">Deskripsi / Bio Developer</label>
-                <textarea id="setting-dev-bio" class="form-control" rows="2">Platform mandiri untuk penyediaan instan dan klaim lisensi akun digital premium gratis. Dibangun dengan fokus pada kecepatan, keamanan, dan keandalan tinggi.</textarea>
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div class="form-group">
-                  <label for="setting-dev-telegram">Username Telegram Admin</label>
-                  <input type="text" id="setting-dev-telegram" class="form-control" value="@ValltzID" placeholder="@ValltzID">
-                </div>
-                <div class="form-group">
-                  <label for="setting-dev-instagram">Akun Instagram Resmi</label>
-                  <input type="text" id="setting-dev-instagram" class="form-control" value="@revdstore.app" placeholder="@revdstore.app">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="setting-dev-email">Email Support / Kontak</label>
-                <input type="email" id="setting-dev-email" class="form-control" value="dev@revd.me" placeholder="dev@revd.me">
-              </div>
-            </div>
-
-            <!-- Bagian 3: Syarat & Ketentuan Layanan -->
-            <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px dashed #000;">
-              <h4 style="font-size: 0.95rem; text-transform: uppercase; margin-bottom: 12px; color: var(--text-main);">
-                3. Syarat & Ketentuan Layanan (Rules Modal)
-              </h4>
-
-              <div class="form-group">
-                <label for="setting-terms-title">Judul Syarat & Ketentuan</label>
-                <input type="text" id="setting-terms-title" class="form-control" value="Ketentuan Penggunaan & Klaim Akun" placeholder="Ketentuan Penggunaan & Klaim Akun">
-              </div>
-
-              <div class="form-group">
-                <label for="setting-terms-content">Isi Syarat & Ketentuan</label>
-                <textarea id="setting-terms-content" class="form-control" rows="6" placeholder="Tuliskan aturan klaim di sini. Pisahkan setiap poin aturan dengan baris kosong atau nomor urut..."></textarea>
-                <small style="display: block; margin-top: 4px; color: var(--text-muted); font-size: 0.75rem;">
-                  Tips: Setiap poin/paragraf yang dipisahkan baris baru akan otomatis ditampilkan dalam kotak Neobrutalism berbingkai tebal.
+                <label for="setting-pg-hub-url">URL Gateway Port 7000</label>
+                <input type="text" id="setting-pg-hub-url" name="pg_hub_url" class="form-control" placeholder="http://127.0.0.1:7000" style="font-family: monospace;">
+                <small style="color: var(--text-muted); font-size: 0.72rem;">
+                  Alamat internal payment gateway lokal untuk ShopeePay dynamic QRIS.
                 </small>
               </div>
+              <div class="form-group">
+                <label for="setting-pg-api-key">API Secret Key Gateway</label>
+                <input type="text" id="setting-pg-api-key" name="pg_api_key" class="form-control" placeholder="Kunci otentikasi header x-api-key" style="font-family: monospace;">
+              </div>
             </div>
 
-            <button type="submit" class="neo-btn neo-btn-yellow" style="width: 100%; padding: 12px;">
-              Simpan Semua Pengaturan Website
+            <!-- 3. INTEGRASI TELEGRAM -->
+            <div style="border-bottom: var(--border-thick); padding-bottom: 16px; margin-bottom: 18px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 12px; text-transform: uppercase;">
+                3. Integrasi Channel &amp; Bot Telegram
+              </h4>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label for="setting-telegram-channel">Username Channel Telegram</label>
+                  <input type="text" id="setting-telegram-channel" name="telegram_channel" class="form-control" placeholder="@revdstore">
+                  <small style="color: var(--text-muted); font-size: 0.72rem;">Channel untuk force-sub sebelum klaim.</small>
+                </div>
+                <div class="form-group">
+                  <label for="setting-dev-telegram">Kontak Pengelola Telegram</label>
+                  <input type="text" id="setting-dev-telegram" name="dev_telegram" class="form-control" placeholder="@ValltzID">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="setting-telegram-bot-token">Bot Token Telegram (Opsional)</label>
+                <input type="password" id="setting-telegram-bot-token" name="telegram_bot_token" class="form-control" placeholder="Token bot Telegram untuk validasi keanggotaan" style="font-family: monospace;">
+              </div>
+            </div>
+
+            <!-- 4. KUPON PROMOSI -->
+            <div style="border-bottom: var(--border-thick); padding-bottom: 16px; margin-bottom: 18px;">
+              <h4 style="font-size: 0.95rem; font-weight: 900; margin-bottom: 12px; text-transform: uppercase;">
+                4. Kupon &amp; Reward Promosi Pasca-Klaim
+              </h4>
+              <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label for="setting-promo-coupon-code">Kode Voucher Promo</label>
+                  <input type="text" id="setting-promo-coupon-code" name="promo_coupon_code" class="form-control" placeholder="CLAIMPROMO5" style="font-family: monospace; text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                  <label for="setting-promo-discount-percent">Diskon (%)</label>
+                  <input type="number" id="setting-promo-discount-percent" name="promo_discount_percent" class="form-control" placeholder="10" min="0" max="100">
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-save-settings" class="neo-btn neo-btn-yellow" style="width: 100%; padding: 14px; font-weight: 900;">
+              SIMPAN SEMUA PENGATURAN
             </button>
           </form>
         </div>
 
         <!-- KEAMANAN & UBAH TOKEN / PASSWORD ADMIN -->
-        <div class="neo-box" style="padding: 20px; max-width: 650px; margin-top: 20px;">
+        <div class="neo-box" style="padding: 20px; max-width: 720px; margin-top: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
-              🔐 Ubah Token / Password Admin
+              Ubah Token Akses Pengelola
             </h3>
             <span class="neo-badge badge-yellow">KEAMANAN</span>
           </div>
 
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600;">
-            Ganti kunci login admin secara instan. Perubahan akan langsung disimpan ke file konfigurasi server <code>.env</code>.
-          </p>
-
           <form id="admin-change-password-form">
             <div class="form-group">
-              <label for="change-current-token">Token Admin Saat Ini</label>
-              <div style="position: relative;">
-                <input type="password" id="change-current-token" class="form-control" placeholder="Masukkan token admin aktif saat ini..." required style="padding-right: 65px; font-family: monospace;">
-                <button type="button" class="btn-toggle-pass" onclick="window.toggleChangePass('change-current-token', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-weight: 800; font-size: 0.75rem; cursor: pointer; color: var(--text-muted);">SHOW</button>
+              <label for="change-current-token">Token Pengelola Saat Ini</label>
+              <input type="password" id="change-current-token" class="form-control" placeholder="Masukkan token pengelola saat ini..." required style="font-family: monospace;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label for="change-new-token">Token Baru</label>
+                <input type="password" id="change-new-token" class="form-control" placeholder="Minimal 6 karakter..." required minlength="6" style="font-family: monospace;">
+              </div>
+              <div class="form-group">
+                <label for="change-confirm-token">Konfirmasi Token Baru</label>
+                <input type="password" id="change-confirm-token" class="form-control" placeholder="Ulangi token baru..." required minlength="6" style="font-family: monospace;">
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="change-new-token">Token Admin Baru</label>
-              <div style="position: relative;">
-                <input type="password" id="change-new-token" class="form-control" placeholder="Minimal 6 karakter..." required minlength="6" style="padding-right: 65px; font-family: monospace;">
-                <button type="button" class="btn-toggle-pass" onclick="window.toggleChangePass('change-new-token', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-weight: 800; font-size: 0.75rem; cursor: pointer; color: var(--text-muted);">SHOW</button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="change-confirm-token">Konfirmasi Token Baru</label>
-              <div style="position: relative;">
-                <input type="password" id="change-confirm-token" class="form-control" placeholder="Ulangi token admin baru..." required minlength="6" style="padding-right: 65px; font-family: monospace;">
-                <button type="button" class="btn-toggle-pass" onclick="window.toggleChangePass('change-confirm-token', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-weight: 800; font-size: 0.75rem; cursor: pointer; color: var(--text-muted);">SHOW</button>
-              </div>
-            </div>
-
-            <button type="submit" id="btn-submit-change-pass" class="neo-btn neo-btn-yellow" style="width: 100%; padding: 12px; margin-top: 8px;">
-              💾 Simpan &amp; Perbarui Token Admin
+            <button type="submit" class="neo-btn neo-btn-white" style="width: 100%; padding: 12px; margin-top: 6px; font-weight: 800;">
+              PERBARUI TOKEN AKSES
             </button>
           </form>
-        </div>
-      </div>
-
-      <!-- TAB 4: DATABASE BACKUP VIEW -->
-      <div id="admin-section-backup" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-          <h3 style="font-size: 1.15rem; font-weight: 900; text-transform: uppercase;">
-            💾 Backup &amp; Pemulihan Database
-          </h3>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="btn-create-backup" onclick="window.createBackup()" class="neo-btn neo-btn-yellow btn-sm">
-              📥 Buat Backup Baru
-            </button>
-            <input type="file" id="input-upload-backup" accept=".sql,.gz" style="display: none;" onchange="window.handleUploadBackup(this)">
-            <button id="btn-upload-backup" onclick="document.getElementById('input-upload-backup').click()" class="neo-btn neo-btn-white btn-sm">
-              📤 Upload Backup (.sql.gz)
-            </button>
-            <button onclick="window.loadBackups()" class="neo-btn neo-btn-white btn-sm">
-              ↺ Segarkan
-            </button>
-          </div>
-        </div>
-
-        <!-- Backup Status & Info Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px;">
-          <div class="stat-card" style="border-top: 5px solid var(--yellow); padding: 14px;">
-            <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">SNAPSHOT TERSIMPAN</div>
-            <div id="backup-stat-count" class="stat-val" style="font-size: 1.5rem;">0 File</div>
-          </div>
-          <div class="stat-card" style="border-top: 5px solid var(--cyan); padding: 14px;">
-            <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">TOTAL KAPASITAS</div>
-            <div id="backup-stat-size" class="stat-val" style="font-size: 1.5rem;">0 KB</div>
-          </div>
-          <div class="stat-card" style="border-top: 5px solid var(--mint); padding: 14px;">
-            <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">JADWAL OTOMATIS</div>
-            <div style="font-size: 1.05rem; font-weight: 900; margin-top: 8px; color: #16a34a;">🟢 Setiap Hari (02:00)</div>
-          </div>
-        </div>
-
-        <!-- Backup List Container -->
-        <div class="neo-card" style="padding: 16px; margin-bottom: 20px; border: var(--border-thick); box-shadow: var(--shadow-sm);">
-          <h4 style="font-size: 1rem; font-weight: 900; text-transform: uppercase; margin-bottom: 14px; letter-spacing: -0.01em;">
-            Daftar Berkas Snapshot Server
-          </h4>
-          <div id="backup-list-container">
-            <!-- Loaded dynamically -->
-            <p style="color: var(--text-muted); font-size: 0.88rem;">Memuat daftar backup...</p>
-          </div>
-        </div>
-
-        <!-- Migration & CLI Guide Box -->
-        <div class="neo-card" style="padding: 16px; background: #fff9db; border: var(--border-thick); box-shadow: var(--shadow-sm); border-radius: 8px; margin-bottom: 30px;">
-          <h4 style="font-size: 0.95rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: #000;">
-            🚀 Panduan Pindah Server &amp; Restore
-          </h4>
-          <p style="font-size: 0.85rem; line-height: 1.5; color: #111; margin-bottom: 10px;">
-            Saat pindah ke VPS baru, jalankan script installer otomatis yang sudah disiapkan:
-          </p>
-          <div style="background: #000; color: #4ade80; padding: 10px 12px; border-radius: 6px; font-family: monospace; font-size: 0.82rem; margin-bottom: 8px; overflow-x: auto;">
-            bash install.sh
-          </div>
-          <p style="font-size: 0.8rem; color: #333; margin: 0; line-height: 1.4;">
-            Installer akan otomatis meminta input nama domain, berjalan di dalam <b>tmux</b> agar aman jika koneksi SSH terputus, dan otomatis menawarkan opsi restore dari berkas backup database ini!
-          </p>
         </div>
       </div>
 
     </div>
   </main>
 
-  <!-- MODAL 1: CREATE / EDIT PRODUCT -->
+  <!-- MODAL 1: TAMBAH / EDIT PRODUK -->
   <div id="product-modal-overlay" class="neo-modal-overlay">
-    <div class="neo-modal" style="max-width: 520px;">
+    <div class="neo-modal" style="max-width: 540px;">
       <div class="modal-header">
         <h3 id="product-modal-title" class="modal-title">Tambah Produk Baru</h3>
         <button id="product-modal-close" class="modal-close-btn">✕</button>
@@ -514,16 +461,16 @@
               <input type="text" id="prod-slug" class="form-control" placeholder="capcut-pro" required>
             </div>
             <div class="form-group">
-              <label for="prod-type">Tipe Produk *</label>
+              <label for="prod-type">Tipe Konten *</label>
               <select id="prod-type" class="form-control">
-                <option value="account">Akun (Email & Password)</option>
-                <option value="link">Invite Link / Web URL</option>
+                <option value="account">Akun (Email &amp; Password)</option>
+                <option value="link">Invite Link / Akses Tautan</option>
               </select>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="prod-desc">Deskripsi Singkat</label>
+            <label for="prod-desc">Deskripsi &amp; Panduan Produk</label>
             <textarea id="prod-desc" class="form-control" rows="2" placeholder="Keterangan atau aturan pemakaian produk..."></textarea>
           </div>
 
@@ -553,66 +500,43 @@
 
           <div class="form-group">
             <label for="prod-cooldown-select">Batas Klaim Ulang (Cooldown)</label>
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
-              <select id="prod-cooldown-select" class="form-control">
-                <option value="0">1x Saja (Permanen / Selamanya)</option>
-                <option value="1">1 Hari (24 Jam)</option>
-                <option value="2">2 Hari (48 Jam)</option>
-                <option value="3">3 Hari</option>
-                <option value="7">7 Hari (1 Minggu)</option>
-                <option value="14">14 Hari (2 Minggu)</option>
-                <option value="30">30 Hari (1 Bulan)</option>
-                <option value="60">60 Hari (2 Bulan)</option>
-                <option value="365">365 Hari (1 Tahun)</option>
-                <option value="custom">Custom Hari...</option>
-              </select>
-              <div id="prod-cooldown-custom-wrap" style="display: none;">
-                <input type="number" id="prod-cooldown-custom" class="form-control" placeholder="Contoh: 5 (Hari)" min="1" max="9999">
-              </div>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">
-              Berapa lama user harus menunggu sebelum diperbolehkan klaim produk ini kembali (misal 7 hari, 30 hari, dll).
-            </span>
+            <select id="prod-cooldown-select" class="form-control">
+              <option value="0">1x Saja (Permanen)</option>
+              <option value="1">1 Hari (24 Jam)</option>
+              <option value="2">2 Hari</option>
+              <option value="3">3 Hari</option>
+              <option value="7">7 Hari (1 Minggu)</option>
+              <option value="14">14 Hari</option>
+              <option value="30">30 Hari (1 Bulan)</option>
+            </select>
           </div>
 
           <div class="form-group">
-            <label for="prod-image">Gambar / Ikon Produk (Upload atau URL)</label>
-            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-              <input type="text" id="prod-image" class="form-control" style="flex: 1;" placeholder="/uploads/capcut.svg atau https://...">
-              <label class="neo-btn neo-btn-cyan" style="cursor: pointer; padding: 8px 12px; font-size: 0.8rem; margin: 0; white-space: nowrap;">
-                Pilih File
-                <input type="file" id="prod-image-file" accept="image/*" style="display: none;">
-              </label>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 40px; height: 40px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--surface-box); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                <img id="prod-image-preview" src="/uploads/logo.svg" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/uploads/logo.svg'">
-              </div>
-              <span style="font-size: 0.76rem; color: var(--text-muted);">Preview gambar produk yang akan tampil di kartu publik.</span>
-            </div>
+            <label for="prod-image">URL Gambar Produk</label>
+            <input type="text" id="prod-image" class="form-control" placeholder="/uploads/capcut.svg atau https://...">
           </div>
 
           <!-- PENGATURAN STORE & PRODUK BERBAYAR -->
-          <div class="form-group" style="background: rgba(0,0,0,0.03); padding: 12px; border: 2px dashed var(--border-color); border-radius: 8px;">
+          <div class="form-group" style="background: var(--surface-box); padding: 12px; border: var(--border-thick); border-radius: 6px;">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700;">
               <input type="checkbox" id="prod-is-paid" style="width: 18px; height: 18px;">
-              <span>Jadikan Produk Berbayar (Store / QRIS)</span>
+              <span>Produk Berbayar (Store / QRIS ShopeePay)</span>
             </label>
             <div id="prod-paid-fields" style="display: none; margin-top: 10px; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div>
-                <label for="prod-price" style="font-size: 0.8rem;">Harga (Rp)</label>
-                <input type="number" id="prod-price" class="form-control" placeholder="Contoh: 5000" min="0" value="0">
+                <label for="prod-price" style="font-size: 0.8rem; font-weight: 800;">Harga Dasar (Rp)</label>
+                <input type="number" id="prod-price" class="form-control" placeholder="15000" min="0" value="0">
               </div>
               <div>
-                <label for="prod-promo-badge" style="font-size: 0.8rem;">Promo Badge (Opsional)</label>
-                <input type="text" id="prod-promo-badge" class="form-control" placeholder="Contoh: BEST SELLER">
+                <label for="prod-promo-badge" style="font-size: 0.8rem; font-weight: 800;">Promo Badge (Opsional)</label>
+                <input type="text" id="prod-promo-badge" class="form-control" placeholder="BEST SELLER">
               </div>
             </div>
           </div>
 
           <div style="display: flex; gap: 10px; margin-top: 18px;">
-            <button type="submit" class="neo-btn neo-btn-yellow" style="flex: 1;">
-              Simpan Data Produk
+            <button type="submit" class="neo-btn neo-btn-yellow" style="flex: 1; font-weight: 900;">
+              SIMPAN PRODUK
             </button>
             <button type="button" id="product-modal-cancel" class="neo-btn neo-btn-white">
               Batal
@@ -623,35 +547,82 @@
     </div>
   </div>
 
-  <!-- MODAL 2: BULK ADD STOCK ITEMS -->
+  <!-- MODAL 2: KELOLA VARIAN PRODUK -->
+  <div id="variant-modal-overlay" class="neo-modal-overlay">
+    <div class="neo-modal" style="max-width: 600px;">
+      <div class="modal-header" style="background: var(--yellow);">
+        <h3 id="variant-modal-title" class="modal-title">Kelola Varian Produk</h3>
+        <button id="variant-modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <input type="hidden" id="variant-product-id">
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: var(--text-muted);">
+            Daftar Varian Produk Saat Ini:
+          </h4>
+          <div id="variant-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+        <div style="border-top: var(--border-thick); padding-top: 14px; margin-top: 14px;">
+          <h4 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; color: var(--text-muted);">
+            + Tambah Varian Baru:
+          </h4>
+          <form id="variant-add-form" style="display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 8px; align-items: flex-end;">
+            <div>
+              <label for="variant-new-name" style="font-size: 0.76rem; font-weight: 800;">Nama Varian *</label>
+              <input type="text" id="variant-new-name" class="form-control" placeholder="1 Bulan / 1 Tahun" required>
+            </div>
+            <div>
+              <label for="variant-new-price" style="font-size: 0.76rem; font-weight: 800;">Harga (Rp) *</label>
+              <input type="number" id="variant-new-price" class="form-control" placeholder="15000" min="0" required>
+            </div>
+            <div>
+              <button type="submit" class="neo-btn neo-btn-yellow" style="padding: 10px 14px; font-weight: 900; white-space: nowrap;">
+                + Tambah
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: BULK ADD STOK -->
   <div id="stock-modal-overlay" class="neo-modal-overlay">
     <div class="neo-modal" style="max-width: 560px;">
       <div class="modal-header" style="background: var(--cyan);">
-        <h3 id="stock-modal-title" class="modal-title">Tambah Stok Akun / Link</h3>
+        <h3 id="stock-modal-title" class="modal-title">Tambah Stok Akun / Tautan</h3>
         <button id="stock-modal-close" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
         <form id="stock-form">
           <input type="hidden" id="stock-product-id">
 
-          <div class="neo-box" style="padding: 12px; margin-bottom: 14px; background: var(--surface-box); font-size: 0.82rem;">
-            <strong>Format Input:</strong><br>
+          <div class="neo-box" style="padding: 10px 12px; margin-bottom: 12px; background: var(--surface-box); font-size: 0.8rem; line-height: 1.5;">
+            <strong>Format Input Stok:</strong><br>
             • Untuk Akun: Masukkan <code>email:password</code> (1 baris per akun)<br>
-            • Untuk Tautan: Masukkan <code>https://...</code> (1 baris per tautan)
+            • Untuk Tautan: Masukkan <code>https://...</code> (1 baris per link)
+          </div>
+
+          <div class="form-group" id="stock-variant-select-wrap">
+            <label for="stock-variant-id">Alokasikan ke Varian Produk</label>
+            <select id="stock-variant-id" class="form-control">
+              <option value="">Stok Umum (Semua Varian)</option>
+            </select>
           </div>
 
           <div class="form-group">
-            <label for="stock-max-claims">
-              Batas Klaim per Item (Kapasitas Pengguna) *
-            </label>
-            <input type="number" id="stock-max-claims" class="form-control" value="2" min="1" max="100" required>
-            <small style="color: var(--text-muted); font-size: 0.72rem; font-weight: 600;">
-              Contoh: Isi <strong>2</strong> jika 1 akun dibagikan untuk maksimal 2 pengguna berbeda.
+            <label for="stock-max-claims">Kapasitas Pengguna per Item (Max Claims) *</label>
+            <input type="number" id="stock-max-claims" class="form-control" value="1" min="1" max="100" required>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">
+              Isi 1 jika akun bersifat privat / eksklusif 1 pembeli.
             </small>
           </div>
 
           <div class="form-group">
-            <label for="stock-text">Daftar Akun / Tautan (Multi-baris) *</label>
+            <label for="stock-text">Daftar Akun / Tautan (1 Baris per Item) *</label>
             <textarea id="stock-text" class="form-control" rows="5" placeholder="email1@gmail.com:Password123&#10;email2@gmail.com:Password456" required style="font-family: monospace; font-size: 0.85rem;"></textarea>
           </div>
 
@@ -661,8 +632,8 @@
           </div>
 
           <div style="display: flex; gap: 10px; margin-top: 18px;">
-            <button type="submit" class="neo-btn neo-btn-cyan" style="flex: 1;">
-              Unggah Stok Massal
+            <button type="submit" class="neo-btn neo-btn-cyan" style="flex: 1; font-weight: 900;">
+              UNGGAH STOK MASSAL
             </button>
             <button type="button" id="stock-modal-cancel" class="neo-btn neo-btn-white">
               Batal
@@ -673,15 +644,15 @@
     </div>
   </div>
 
-  <!-- MODAL 3: VIEW ITEMS LIST -->
+  <!-- MODAL 4: LIHAT DETAIL ITEM STOK -->
   <div id="items-list-modal-overlay" class="neo-modal-overlay">
-    <div class="neo-modal" style="max-width: 650px;">
+    <div class="neo-modal" style="max-width: 680px;">
       <div class="modal-header" style="background: var(--pink);">
         <h3 id="items-list-modal-title" class="modal-title">Daftar Item Stok</h3>
         <button id="items-list-modal-close" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
-        <div id="items-list-body" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+        <div id="items-list-body" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <!-- Loaded dynamically -->
         </div>
       </div>
@@ -690,6 +661,6 @@
 
   <div id="toast-container"></div>
 
-  <script src="/js/admin.js?v=20261030_32"></script>
+  <script src="/js/admin.js?v=20261109_03"></script>
 </body>
 </html>

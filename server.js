@@ -19,6 +19,31 @@ const PG_API_KEY = process.env.PG_API_KEY || 'pg_live_revd_master';
 const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL || '@revdstore';
 const PROMO_COUPON_CODE = process.env.PROMO_COUPON_CODE || 'CLAIMPROMO5';
 
+// Dynamic Database Settings Helpers (Zero Hardcode)
+async function getSetting(key, fallback = '') {
+  try {
+    const res = await db.query('SELECT value FROM site_settings WHERE key = $1', [key]);
+    if (res.rows.length > 0 && res.rows[0].value !== null && res.rows[0].value !== '') {
+      return res.rows[0].value;
+    }
+  } catch (err) {
+    // fallback below
+  }
+  return process.env[key.toUpperCase()] || fallback;
+}
+
+async function getAllSettings() {
+  try {
+    const result = await db.query('SELECT key, value FROM site_settings');
+    const settings = {};
+    result.rows.forEach(r => { settings[r.key] = r.value; });
+    return settings;
+  } catch (err) {
+    console.error('Error loading settings from DB:', err.message);
+    return {};
+  }
+}
+
 // Multer Storage Configuration (Whitelisted Images Only - Raster to prevent SVG Stored XSS)
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
@@ -267,7 +292,10 @@ function safeCompare(a, b) {
 
 // Admin Auth Middleware
 function requireAdmin(req, res, next) {
-  const token = req.cookies.admin_token || req.headers['x-admin-token'];
+  let token = req.cookies.admin_token || req.headers['x-admin-token'];
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.slice(7).trim();
+  }
   if (!token || !isValidAdminSession(token)) {
     return res.status(401).json({ success: false, message: 'Akses admin tidak sah / belum login.' });
   }
@@ -279,12 +307,25 @@ function requireAdmin(req, res, next) {
 // ----------------------------------------------------
 
 // 1. Get Brand Config & Settings
-app.get('/api/config', (req, res) => {
-  res.json({ 
-    brand_name: BRAND_NAME,
-    telegram_channel: TELEGRAM_CHANNEL,
-    promo_coupon: PROMO_COUPON_CODE
-  });
+app.get('/api/config', async (req, res) => {
+  try {
+    const settings = await getAllSettings();
+    res.json({ 
+      brand_name: settings.brand_name || BRAND_NAME,
+      telegram_channel: settings.telegram_channel || TELEGRAM_CHANNEL,
+      promo_coupon: settings.promo_coupon_code || PROMO_COUPON_CODE,
+      promo_discount: settings.promo_discount_percent || '10',
+      hero_title: settings.hero_title || 'Katalog Produk Digital',
+      hero_desc: settings.hero_desc || 'Layanan produk dan akun digital instan.',
+      site_title: settings.site_title || 'REVDSTORE',
+    });
+  } catch (err) {
+    res.json({ 
+      brand_name: BRAND_NAME,
+      telegram_channel: TELEGRAM_CHANNEL,
+      promo_coupon: PROMO_COUPON_CODE
+    });
+  }
 });
 
 app.get('/api/settings', async (req, res) => {
@@ -312,6 +353,18 @@ app.get('/api/products', async (req, res) => {
         COALESCE(p.is_paid, false) AS is_paid,
         COALESCE(p.price, 0)::INT AS price,
         p.promo_badge,
+        COALESCE(
+          (SELECT json_agg(json_build_object(
+            'id', pv.id,
+            'name', pv.name,
+            'price', pv.price,
+            'sort_order', pv.sort_order,
+            'is_active', pv.is_active,
+            'stock', (SELECT COUNT(pi.id)::INT FROM product_items pi WHERE pi.variant_id = pv.id AND pi.is_active = true AND pi.current_claims < pi.max_claims)
+          ) ORDER BY pv.sort_order ASC, pv.id ASC)
+          FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_active = true),
+          '[]'::json
+        ) AS variants,
         COALESCE(p.cooldown_days, 0)::INT AS cooldown_days,
         COALESCE(SUM(GREATEST(0, i.max_claims - i.current_claims)), 0)::INT AS remaining_claims,
         COUNT(i.id) FILTER (WHERE i.is_active = true AND i.current_claims < i.max_claims)::INT AS available_slots,
@@ -593,7 +646,7 @@ app.get('/api/history', async (req, res) => {
 // 5. Create Paid Order (QRIS ShopeePay Gateway via Port 7000)
 app.post('/api/orders/create', claimLimiter, async (req, res) => {
   try {
-    const { product_id, user_token } = req.body || {};
+    const { product_id, user_token, variant_id } = req.body || {};
     if (!product_id || !user_token) {
       return res.status(400).json({ success: false, message: 'Parameter tidak lengkap.' });
     }
@@ -604,36 +657,57 @@ app.post('/api/orders/create', claimLimiter, async (req, res) => {
     }
     const prod = prodRes.rows[0];
     if (!prod.is_paid) {
-      return res.status(400).json({ success: false, message: 'Produk ini adalah produk gratis, gunakan tombol Claim.' });
+      return res.status(400).json({ success: false, message: 'Produk ini adalah produk gratis, silakan klaim langsung.' });
     }
 
-    // Cek ketersediaan stok
+    let amount = parseInt(prod.price, 10) || 5000;
+    let selectedVariant = null;
+
+    if (variant_id) {
+      const varRes = await db.query(
+        'SELECT * FROM product_variants WHERE id = $1 AND product_id = $2 AND is_active = true',
+        [variant_id, product_id]
+      );
+      if (varRes.rows.length > 0) {
+        selectedVariant = varRes.rows[0];
+        amount = parseInt(selectedVariant.price, 10);
+      }
+    }
+
+    // Cek ketersediaan stok (utamakan varian jika dipilih)
     const stockRes = await db.query(
-      'SELECT COUNT(id)::INT AS stock FROM product_items WHERE product_id = $1 AND is_active = true AND current_claims < max_claims',
-      [product_id]
+      `SELECT COUNT(id)::INT AS stock 
+       FROM product_items 
+       WHERE product_id = $1 
+         AND ($2::INT IS NULL OR variant_id = $2 OR variant_id IS NULL)
+         AND is_active = true 
+         AND current_claims < max_claims`,
+      [product_id, selectedVariant ? selectedVariant.id : null]
     );
     if (!stockRes.rows[0] || stockRes.rows[0].stock <= 0) {
-      return res.status(400).json({ success: false, message: 'Stok produk ini sedang habis.' });
+      return res.status(400).json({ success: false, message: 'Stok untuk item/varian ini sedang habis.' });
     }
 
     const orderCode = 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-    const amount = parseInt(prod.price, 10) || 5000;
     const expiresInMinutes = 15;
+
+    const pgUrl = await getSetting('pg_hub_url', PG_HUB_URL);
+    const pgKey = await getSetting('pg_api_key', PG_API_KEY);
 
     let qrisString = '';
     let qrUrl = '';
     try {
-      const pgRes = await fetch(`${PG_HUB_URL}/api/v1/payments/create-qris`, {
+      const pgRes = await fetch(`${pgUrl}/api/v1/payments/create-qris`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': PG_API_KEY,
+          'X-API-Key': pgKey,
         },
         body: JSON.stringify({
           order_id: orderCode,
           amount: amount,
           provider: 'shopeepay',
-          customer_name: 'Guest Claim User',
+          customer_name: 'Store Customer',
           client_id: 'revdstore_web',
           expires_in_minutes: expiresInMinutes,
         }),
@@ -650,9 +724,9 @@ app.post('/api/orders/create', claimLimiter, async (req, res) => {
     }
 
     await db.query(
-      `INSERT INTO orders (order_code, order_type, user_token, product_id, total_amount, payment_status, payment_method, qris_string, qr_url)
-       VALUES ($1, 'paid', $2, $3, $4, 'unpaid', 'qris_shopeepay', $5, $6);`,
-      [orderCode, user_token, product_id, amount, qrisString, qrUrl]
+      `INSERT INTO orders (order_code, order_type, user_token, product_id, total_amount, payment_status, payment_method, qris_string, qr_url, variant_id, variant_name)
+       VALUES ($1, 'paid', $2, $3, $4, 'unpaid', 'qris_shopeepay', $5, $6, $7, $8);`,
+      [orderCode, user_token, product_id, amount, qrisString, qrUrl, selectedVariant ? selectedVariant.id : null, selectedVariant ? selectedVariant.name : null]
     );
 
     res.json({
@@ -660,7 +734,8 @@ app.post('/api/orders/create', claimLimiter, async (req, res) => {
       order: {
         order_code: orderCode,
         amount: amount,
-        product_name: prod.name,
+        product_name: prod.name + (selectedVariant ? ` (${selectedVariant.name})` : ''),
+        variant_name: selectedVariant ? selectedVariant.name : null,
         qris_string: qrisString,
         qr_url: qrUrl,
         expires_in_minutes: expiresInMinutes,
@@ -702,9 +777,11 @@ app.get('/api/orders/:order_code/status', async (req, res) => {
 
     // Jika unpaid, cek status ke Payment Gateway
     let isSettled = false;
+    const pgUrl = await getSetting('pg_hub_url', PG_HUB_URL);
+    const pgKey = await getSetting('pg_api_key', PG_API_KEY);
     try {
-      const pgRes = await fetch(`${PG_HUB_URL}/api/v1/payments/${encodeURIComponent(order_code)}/status`, {
-        headers: { 'X-API-Key': PG_API_KEY },
+      const pgRes = await fetch(`${pgUrl}/api/v1/payments/${encodeURIComponent(order_code)}/status`, {
+        headers: { 'X-API-Key': pgKey },
       });
       const pgData = await pgRes.json();
       if (pgData.success && (pgData.data.paid || pgData.data.status === 'paid')) {
@@ -744,11 +821,14 @@ app.get('/api/orders/:order_code/status', async (req, res) => {
       const itemRes = await client.query(
         `SELECT id, content, notes 
          FROM product_items 
-         WHERE product_id = $1 AND is_active = true AND current_claims < max_claims 
-         ORDER BY id ASC 
+         WHERE product_id = $1 
+           AND ($2::INT IS NULL OR variant_id = $2 OR variant_id IS NULL)
+           AND is_active = true 
+           AND current_claims < max_claims 
+         ORDER BY (CASE WHEN variant_id = $2 THEN 0 ELSE 1 END), id ASC 
          LIMIT 1 
          FOR UPDATE SKIP LOCKED`,
-        [order.product_id]
+        [order.product_id, order.variant_id]
       );
 
       if (itemRes.rows.length === 0) {
@@ -896,11 +976,20 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
       WITH p AS (SELECT COUNT(*)::INT AS total FROM products),
            i AS (SELECT COUNT(*)::INT AS total, COALESCE(SUM(max_claims),0)::INT AS total_capacity, COALESCE(SUM(current_claims),0)::INT AS total_claimed FROM product_items WHERE is_active = true),
            cl AS (SELECT COUNT(*)::INT AS total, COUNT(DISTINCT user_token)::INT AS unique_users, COUNT(DISTINCT ip_address)::INT AS unique_ips FROM claim_logs),
-           ct AS (SELECT COUNT(*)::INT AS total FROM claim_logs WHERE claimed_at >= CURRENT_DATE)
-      SELECT p.total AS total_products, i.total_capacity, i.total_claimed,
+           ct AS (SELECT COUNT(*)::INT AS total FROM claim_logs WHERE claimed_at >= CURRENT_DATE),
+           ord AS (
+             SELECT 
+               COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0)::BIGINT AS total_revenue,
+               COUNT(id) FILTER (WHERE payment_status = 'paid')::INT AS paid_orders,
+               COUNT(id) FILTER (WHERE payment_status = 'unpaid')::INT AS unpaid_orders,
+               COUNT(id)::INT AS total_orders
+             FROM orders
+           )
+      SELECT p.total AS total_products, i.total_capacity, i.total_claimed, i.total AS total_items,
              GREATEST(0, i.total_capacity - i.total_claimed)::INT AS remaining_slots,
-             cl.total AS total_logs, cl.unique_users, cl.unique_ips, ct.total AS claims_today
-      FROM p, i, cl, ct
+             cl.total AS total_logs, cl.unique_users, cl.unique_ips, ct.total AS claims_today,
+             ord.total_revenue, ord.paid_orders, ord.unpaid_orders, ord.total_orders
+      FROM p, i, cl, ct, ord
     `);
     res.json({ success: true, stats: result.rows[0] });
   } catch (err) {
@@ -1036,45 +1125,22 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
   }
 });
 
-// Admin Update Site Settings (Batch Insert in Transaction)
+// Admin Update Site Settings (Dynamic Key-Value Storage)
 app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   const client = await db.pool.connect();
   try {
-    const {
-      site_name, site_tag, site_title, hero_title, hero_desc,
-      site_logo, site_favicon, dev_name, dev_role, dev_bio,
-      dev_telegram, dev_channel, dev_instagram, dev_email,
-      terms_title, terms_content
-    } = req.body || {};
-
-    const entries = [
-      ['site_name', site_name || 'REVDSTORE'],
-      ['site_tag', site_tag || 'CLAIM HUB'],
-      ['site_title', site_title || 'REVDSTORE — Claim Hub Produk Digital'],
-      ['hero_title', hero_title || 'REVDSTORE FREE'],
-      ['hero_desc', hero_desc || 'Akses akun & lisensi premium digital secara gratis tanpa ribet registrasi.'],
-      ['site_logo', site_logo || ''],
-      ['site_favicon', site_favicon || ''],
-      ['dev_name', dev_name || 'REVDSTORE'],
-      ['dev_role', dev_role || 'Official Digital Claim Hub'],
-      ['dev_bio', dev_bio || 'Platform klaim instan akun & lisensi premium gratis REVDSTORE.'],
-      ['dev_telegram', dev_telegram || '@ValltzID'],
-      ['dev_channel', dev_channel || ''],
-      ['dev_instagram', dev_instagram || '@revdstore.app'],
-      ['dev_email', dev_email || 'dev@revd.me'],
-      ['terms_title', terms_title || 'Ketentuan Penggunaan & Klaim Akun'],
-      ['terms_content', terms_content || ''],
-    ];
-
+    const payload = req.body || {};
     await client.query('BEGIN');
-    for (const [key, value] of entries) {
+    for (const [key, rawVal] of Object.entries(payload)) {
+      if (typeof key !== 'string' || key.length > 80) continue;
+      const val = (rawVal === null || rawVal === undefined) ? '' : String(rawVal).trim();
       await client.query(
         'INSERT INTO site_settings (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
-        [key, value]
+        [key, val]
       );
     }
     await client.query('COMMIT');
-    res.json({ success: true, message: 'Pengaturan web & info developer berhasil disimpan.' });
+    res.json({ success: true, message: 'Semua pengaturan berhasil disimpan secara permanen.' });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error saving settings:', err);
@@ -1160,6 +1226,78 @@ app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Admin Product Variants Endpoints
+app.get('/api/admin/products/:id/variants', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query(
+      `SELECT pv.*, 
+        (SELECT COUNT(pi.id)::INT FROM product_items pi WHERE pi.variant_id = pv.id AND pi.is_active = true AND pi.current_claims < pi.max_claims) AS stock
+       FROM product_variants pv 
+       WHERE pv.product_id = $1 
+       ORDER BY pv.sort_order ASC, pv.id ASC`,
+      [id]
+    );
+    res.json({ success: true, variants: result.rows });
+  } catch (err) {
+    console.error('Error getting variants:', err);
+    res.status(500).json({ success: false, message: 'Gagal memuat varian produk.' });
+  }
+});
+
+app.post('/api/admin/products/:id/variants', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { name, price, sort_order, is_active } = req.body || {};
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ success: false, message: 'Nama varian wajib diisi.' });
+  }
+  try {
+    const result = await db.query(
+      `INSERT INTO product_variants (product_id, name, price, sort_order, is_active)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [id, name.trim(), parseInt(price, 10) || 0, parseInt(sort_order, 10) || 0, is_active !== false]
+    );
+    res.json({ success: true, message: 'Varian berhasil ditambahkan.', variant: result.rows[0] });
+  } catch (err) {
+    console.error('Error creating variant:', err);
+    res.status(500).json({ success: false, message: 'Gagal menambahkan varian.' });
+  }
+});
+
+app.put('/api/admin/variants/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { name, price, sort_order, is_active } = req.body || {};
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ success: false, message: 'Nama varian wajib diisi.' });
+  }
+  try {
+    const result = await db.query(
+      `UPDATE product_variants 
+       SET name = $1, price = $2, sort_order = $3, is_active = $4, updated_at = NOW()
+       WHERE id = $5 RETURNING *`,
+      [name.trim(), parseInt(price, 10) || 0, parseInt(sort_order, 10) || 0, is_active !== false, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Varian tidak ditemukan.' });
+    }
+    res.json({ success: true, message: 'Varian berhasil diperbarui.', variant: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating variant:', err);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui varian.' });
+  }
+});
+
+app.delete('/api/admin/variants/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM product_variants WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Varian berhasil dihapus.' });
+  } catch (err) {
+    console.error('Error deleting variant:', err);
+    res.status(500).json({ success: false, message: 'Gagal menghapus varian.' });
+  }
+});
+
 // Admin Get Items of Product
 app.get('/api/admin/products/:id/items', requireAdmin, async (req, res) => {
   try {
@@ -1168,7 +1306,11 @@ app.get('/api/admin/products/:id/items', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID produk tidak valid.' });
     }
     const items = await db.query(
-      `SELECT * FROM product_items WHERE product_id = $1 ORDER BY id DESC`,
+      `SELECT pi.*, pv.name AS variant_name 
+       FROM product_items pi 
+       LEFT JOIN product_variants pv ON pi.variant_id = pv.id 
+       WHERE pi.product_id = $1 
+       ORDER BY pi.id DESC`,
       [productId]
     );
     res.json({ success: true, items: items.rows });
@@ -1187,7 +1329,7 @@ app.post('/api/admin/products/:id/items', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID produk tidak valid.' });
     }
 
-    const { items, items_text, max_claims, notes } = req.body || {};
+    const { items, items_text, max_claims, notes, variant_id } = req.body || {};
 
     let lines = [];
     if (Array.isArray(items)) {
@@ -1204,20 +1346,21 @@ app.post('/api/admin/products/:id/items', requireAdmin, async (req, res) => {
 
     const claimLimit = parseInt(max_claims, 10) > 0 ? parseInt(max_claims, 10) : 1;
     const cleanNotes = typeof notes === 'string' ? notes.trim() : '';
+    const vId = variant_id ? parseInt(variant_id, 10) : null;
 
     await client.query('BEGIN');
 
     // Batch insert multi-row dalam 1 kueri atomik (mengatasi N+1 loop)
     const values = [];
-    const params = [productId, cleanNotes, claimLimit];
+    const params = [productId, cleanNotes, claimLimit, vId];
 
     lines.forEach((line) => {
       params.push(line);
-      values.push(`($1, $${params.length}, $2, $3, 0)`);
+      values.push(`($1, $${params.length}, $2, $3, 0, $4)`);
     });
 
     await client.query(
-      `INSERT INTO product_items (product_id, content, notes, max_claims, current_claims)
+      `INSERT INTO product_items (product_id, content, notes, max_claims, current_claims, variant_id)
        VALUES ${values.join(', ')}`,
       params
     );

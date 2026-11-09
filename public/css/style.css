@@ -1132,3 +1132,158 @@ body.dark-mode .neo-btn.disabled {
 .account-key-box {
   border-left: 6px solid var(--yellow);
 }
+
+/* Minimalist Product Grid (Utamakan Produk) */
+.products-grid-minimal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+  margin: 16px 0 32px;
+}
+
+@media (max-width: 480px) {
+  .products-grid-minimal {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+.product-mini-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: var(--border-thick);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  user-select: none;
+}
+
+.product-mini-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--text-main);
+}
+
+.product-mini-card:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--shadow-color);
+}
+
+.product-mini-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--surface-box);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: var(--border-thick);
+}
+
+.product-mini-thumb img {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.product-mini-card:hover .product-mini-thumb img {
+  transform: scale(1.08);
+}
+
+.product-mini-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1.5px solid var(--border-color);
+  box-shadow: 1px 1px 0px var(--shadow-color);
+}
+
+.product-mini-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-grow: 1;
+}
+
+.product-mini-title {
+  font-size: 0.88rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  color: var(--text-main);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-mini-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.product-mini-price {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--text-main);
+}
+
+.product-mini-stock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.product-mini-stock-dot.in-stock {
+  background: var(--mint);
+  box-shadow: 0 0 0 2px rgba(111, 231, 169, 0.4);
+}
+
+.product-mini-stock-dot.out-of-stock {
+  background: var(--pink);
+  box-shadow: 0 0 0 2px rgba(255, 112, 166, 0.4);
+}
+
+/* Variant selection pills in detail modal */
+.variant-select-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: var(--border-thick);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.variant-select-option.selected {
+  background: var(--surface-box);
+  border-color: var(--text-main);
+  box-shadow: 3px 3px 0px var(--shadow-color);
+}
+
+.variant-select-option:hover {
+  border-color: var(--text-main);
+}

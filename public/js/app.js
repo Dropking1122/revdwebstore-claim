@@ -526,107 +526,198 @@
     }
 
     productsContainer.innerHTML = filteredProducts.map((prod) => {
-      const themeClass = `theme-${prod.color_theme || 'yellow'}`;
-      const isClaimed = prod.already_claimed;
       const remaining = prod.remaining_claims || 0;
       const isOutOfStock = remaining <= 0;
-
-      let buttonHtml = '';
-      let cooldownNote = '';
-
-      if (prod.is_paid) {
-        if (isOutOfStock) {
-          buttonHtml = `
-            <button class="neo-btn disabled" style="width: 100%;" disabled>
-              Stok Store Habis
-            </button>
-          `;
-        } else {
-          buttonHtml = `
-            <button class="neo-btn neo-btn-yellow" style="width: 100%; font-weight: 900;" onclick="window.buyProduct(${prod.id})">
-              BELI (Rp ${(prod.price || 0).toLocaleString('id-ID')})
-            </button>
-          `;
-        }
-      } else if (isClaimed) {
-        buttonHtml = `
-          <button class="neo-btn neo-btn-mint" style="width: 100%; font-weight: 900;" onclick="window.appSwitchToHistory()">
-            SUDAH DI CLAIM
-          </button>
-        `;
-        if (prod.cooldown_remaining_seconds && prod.cooldown_remaining_seconds > 0) {
-          const nextDate = new Date(Date.now() + prod.cooldown_remaining_seconds * 1000);
-          const dateFormatted = nextDate.toLocaleDateString('id-ID', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          }) + ' WIB';
-          cooldownNote = `
-            <div style="font-size: 0.73rem; font-weight: 700; color: var(--text-muted); text-align: center; margin-top: 6px;">
-              Bisa claim lagi: <span style="color: var(--text-main); font-weight: 800;">${dateFormatted}</span>
-            </div>
-          `;
-        }
-      } else if (isOutOfStock) {
-        buttonHtml = `
-          <button class="neo-btn disabled" style="width: 100%;" disabled>
-            Kuota Habis
-          </button>
-        `;
-      } else {
-        buttonHtml = `
-          <button class="neo-btn" style="width: 100%;" onclick="window.claimProduct(${prod.id})">
-            CLAIM
-          </button>
-        `;
-      }
-
-      const topBadgeHtml = prod.is_paid 
-        ? `<div class="neo-badge badge-yellow" style="font-weight: 900;">Rp ${(prod.price || 0).toLocaleString('id-ID')}</div>`
-        : `<div class="neo-badge badge-${prod.color_theme || 'yellow'}">${escapeHtml(prod.badge_text || 'GRATIS')}</div>`;
-
-      const promoBadgeHtml = prod.promo_badge 
-        ? `<div class="neo-badge badge-pink" style="margin-top: 4px; font-size: 0.68rem; font-weight: 900;">${escapeHtml(prod.promo_badge)}</div>`
-        : '';
+      const priceText = prod.is_paid 
+        ? `Rp ${(prod.price || 0).toLocaleString('id-ID')}` 
+        : 'Gratis';
+      const badgeText = prod.is_paid ? 'STORE' : 'GRATIS';
+      const badgeClass = prod.is_paid ? 'badge-yellow' : 'badge-mint';
 
       return `
-        <div class="product-card">
-          <!-- 1. Bar Atas: Gambar + Nama Produk Sejajar dengan Badge -->
-          <div class="card-top ${themeClass}">
-            <div class="card-top-left">
-              <img class="product-thumb-img" src="${escapeHtml(prod.image_url || '/uploads/logo.svg')}" alt="${escapeHtml(prod.name)}" onerror="this.src='/uploads/logo.svg'">
-              <div class="card-title-group">
-                <span class="card-type-subtag">${prod.is_paid ? 'STORE (PAID)' : (prod.item_type === 'link' ? 'INVITE LINK' : 'AKUN LOGIN')}</span>
-                <h3 class="card-title">${escapeHtml(prod.name)}</h3>
-              </div>
-            </div>
-            <div class="card-top-right" style="display: flex; flex-direction: column; align-items: flex-end;">
-              ${topBadgeHtml}
-              ${promoBadgeHtml}
-            </div>
+        <div class="product-mini-card" onclick="window.openProductDetail(${prod.id})">
+          <div class="product-mini-thumb">
+            <span class="product-mini-badge neo-badge ${badgeClass}">${badgeText}</span>
+            <img src="${escapeHtml(prod.image_url || '/uploads/logo.svg')}" alt="${escapeHtml(prod.name)}" onerror="this.src='/uploads/logo.svg'">
           </div>
-          <!-- 2. Di Bawah Bar Atas: Khusus untuk Deskripsi & Info Kuota -->
-          <div class="card-body">
-            <p class="card-desc">${escapeHtml(prod.description || 'Akses resmi produk digital siap pakai.')}</p>
-            <div class="card-meta">
-              <div class="stock-indicator">
-                <span class="stock-dot ${isOutOfStock ? 'empty' : ''}"></span>
-                <span>${isOutOfStock ? 'Stok Habis' : `Tersedia: <strong>${remaining} Slot</strong>`}</span>
-              </div>
-              <div class="claims-indicator" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">
-                ${prod.is_paid ? 'Terjual' : 'Total Klaim'}: <strong style="color: var(--text-main);">${prod.total_claims || 0}</strong>
-              </div>
+          <div class="product-mini-body">
+            <h3 class="product-mini-title">${escapeHtml(prod.name)}</h3>
+            <div class="product-mini-footer">
+              <span class="product-mini-price">${priceText}</span>
+              <span class="product-mini-stock-dot ${isOutOfStock ? 'out-of-stock' : 'in-stock'}" title="${isOutOfStock ? 'Habis' : 'Tersedia'}"></span>
             </div>
-          </div>
-          <div class="card-footer">
-            ${buttonHtml}
-            ${cooldownNote}
           </div>
         </div>
       `;
     }).join('');
+  }
+
+  // MODAL: Detail Produk Logic
+  let currentDetailProduct = null;
+  let selectedVariantId = null;
+
+  window.openProductDetail = function(productId) {
+    const prod = cachedProducts.find(p => p.id === productId);
+    if (!prod) return;
+
+    currentDetailProduct = prod;
+    selectedVariantId = null;
+
+    const overlay = document.getElementById('product-detail-modal-overlay');
+    const imgEl = document.getElementById('detail-product-img');
+    const titleEl = document.getElementById('detail-product-title');
+    const headerTitleEl = document.getElementById('detail-product-header-title');
+    const badgeEl = document.getElementById('detail-product-badge');
+    const descEl = document.getElementById('detail-product-desc');
+    const variantsWrap = document.getElementById('detail-product-variants-wrap');
+    const variantsList = document.getElementById('detail-product-variants-list');
+
+    if (!overlay) return;
+
+    headerTitleEl.textContent = prod.is_paid ? 'DETAIL PRODUK STORE' : 'DETAIL PRODUK KLAIM';
+    badgeEl.textContent = prod.is_paid ? 'STORE' : 'GRATIS';
+    badgeEl.className = `neo-badge ${prod.is_paid ? 'badge-yellow' : 'badge-mint'}`;
+    imgEl.src = prod.image_url || '/uploads/logo.svg';
+    titleEl.textContent = prod.name;
+    descEl.textContent = prod.description || 'Akses resmi produk digital siap pakai.';
+
+    // Variants Handling
+    const hasVariants = prod.variants && Array.isArray(prod.variants) && prod.variants.length > 0;
+    if (hasVariants) {
+      variantsWrap.style.display = 'block';
+      selectedVariantId = prod.variants[0].id;
+
+      variantsList.innerHTML = prod.variants.map((v, idx) => {
+        const isSel = idx === 0;
+        return `
+          <div class="variant-select-option ${isSel ? 'selected' : ''}" data-variant-id="${v.id}" onclick="window.selectDetailVariant(${v.id})">
+            <div>
+              <strong style="text-transform: uppercase;">${escapeHtml(v.name)}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Stok: ${v.stock || 0} unit</div>
+            </div>
+            <div style="font-weight: 900; font-size: 0.95rem;">
+              Rp ${(v.price || 0).toLocaleString('id-ID')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      variantsWrap.style.display = 'none';
+      variantsList.innerHTML = '';
+    }
+
+    updateDetailModalUI();
+    overlay.classList.add('active');
+  };
+
+  window.selectDetailVariant = function(variantId) {
+    selectedVariantId = variantId;
+    const items = document.querySelectorAll('.variant-select-option');
+    items.forEach(el => {
+      if (parseInt(el.getAttribute('data-variant-id'), 10) === variantId) {
+        el.classList.add('selected');
+      } else {
+        el.classList.remove('selected');
+      }
+    });
+    updateDetailModalUI();
+  };
+
+  function updateDetailModalUI() {
+    if (!currentDetailProduct) return;
+    const prod = currentDetailProduct;
+    const priceEl = document.getElementById('detail-product-price');
+    const stockBadgeEl = document.getElementById('detail-product-stock-badge');
+    const infoBox = document.getElementById('detail-product-info-box');
+    const actionBtn = document.getElementById('detail-product-action-btn');
+
+    let currentPrice = prod.price || 0;
+    let currentStock = prod.remaining_claims || 0;
+
+    if (selectedVariantId && prod.variants) {
+      const activeVar = prod.variants.find(v => v.id === selectedVariantId);
+      if (activeVar) {
+        currentPrice = activeVar.price || 0;
+        currentStock = activeVar.stock || 0;
+      }
+    }
+
+    const isOutOfStock = currentStock <= 0;
+    if (prod.is_paid) {
+      priceEl.textContent = `Rp ${currentPrice.toLocaleString('id-ID')}`;
+    } else {
+      priceEl.textContent = 'Gratis';
+    }
+
+    if (isOutOfStock) {
+      stockBadgeEl.className = 'neo-badge badge-pink';
+      stockBadgeEl.textContent = 'Stok Habis';
+    } else {
+      stockBadgeEl.className = 'neo-badge badge-green';
+      stockBadgeEl.textContent = `Tersedia (${currentStock} Slot)`;
+    }
+
+    infoBox.style.display = 'none';
+    infoBox.innerHTML = '';
+
+    if (prod.is_paid) {
+      if (isOutOfStock) {
+        actionBtn.className = 'neo-btn disabled';
+        actionBtn.disabled = true;
+        actionBtn.textContent = 'STOK HABIS';
+        actionBtn.onclick = null;
+      } else {
+        actionBtn.className = 'neo-btn neo-btn-yellow';
+        actionBtn.disabled = false;
+        actionBtn.textContent = `BELI SEKARANG — Rp ${currentPrice.toLocaleString('id-ID')}`;
+        actionBtn.onclick = () => {
+          window.closeProductDetail();
+          window.buyProduct(prod.id, selectedVariantId);
+        };
+      }
+    } else {
+      if (prod.already_claimed) {
+        actionBtn.className = 'neo-btn neo-btn-mint';
+        actionBtn.disabled = false;
+        actionBtn.textContent = 'SUDAH DIKLAIM — LIHAT RIWAYAT';
+        actionBtn.onclick = () => {
+          window.closeProductDetail();
+          window.appSwitchToHistory();
+        };
+        if (prod.cooldown_remaining_seconds && prod.cooldown_remaining_seconds > 0) {
+          const nextDate = new Date(Date.now() + prod.cooldown_remaining_seconds * 1000);
+          infoBox.style.display = 'block';
+          infoBox.innerHTML = `<strong>Cooldown Aktif:</strong> Anda dapat mengklaim produk ini kembali pada <strong>${nextDate.toLocaleString('id-ID')}</strong>.`;
+        }
+      } else if (isOutOfStock) {
+        actionBtn.className = 'neo-btn disabled';
+        actionBtn.disabled = true;
+        actionBtn.textContent = 'KUOTA HABIS';
+        actionBtn.onclick = null;
+      } else {
+        actionBtn.className = 'neo-btn neo-btn-yellow';
+        actionBtn.disabled = false;
+        actionBtn.textContent = 'KLAIM SEKARANG';
+        actionBtn.onclick = () => {
+          window.closeProductDetail();
+          window.claimProduct(prod.id);
+        };
+      }
+    }
+  }
+
+  window.closeProductDetail = function() {
+    const overlay = document.getElementById('product-detail-modal-overlay');
+    if (overlay) overlay.classList.remove('active');
+  };
+
+  const detailCloseBtn = document.getElementById('detail-product-close-btn');
+  if (detailCloseBtn) detailCloseBtn.addEventListener('click', window.closeProductDetail);
+  const detailOverlay = document.getElementById('product-detail-modal-overlay');
+  if (detailOverlay) {
+    detailOverlay.addEventListener('click', (e) => {
+      if (e.target === detailOverlay) window.closeProductDetail();
+    });
   }
 
   // Claim Product Action
@@ -841,7 +932,7 @@
     }
   };
 
-  window.buyProduct = async function (productId) {
+  window.buyProduct = async function (productId, variantId = null) {
     const prod = cachedProducts.find(p => p.id === productId);
     if (!prod) return;
 
@@ -853,6 +944,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product_id: productId,
+          variant_id: variantId,
           user_token: getUserToken()
         })
       });
