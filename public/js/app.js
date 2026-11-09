@@ -295,6 +295,7 @@
             }
           }
         }
+        buildNotifications();
       }
     } catch (e) {
       console.warn('Gagal sinkronisasi pengaturan web:', e);
@@ -469,6 +470,37 @@
     document.body.removeChild(textArea);
   }
 
+  // Catalog Live Search
+  const catalogSearchInput = document.getElementById('catalog-search-input');
+  const catalogSearchClear = document.getElementById('catalog-search-clear');
+
+  if (catalogSearchInput) {
+    catalogSearchInput.addEventListener('input', () => {
+      const val = catalogSearchInput.value.trim();
+      if (catalogSearchClear) {
+        catalogSearchClear.style.display = val ? 'block' : 'none';
+      }
+      renderProducts(cachedProducts);
+    });
+  }
+
+  if (catalogSearchClear) {
+    catalogSearchClear.addEventListener('click', () => {
+      if (catalogSearchInput) {
+        catalogSearchInput.value = '';
+        catalogSearchInput.focus();
+      }
+      catalogSearchClear.style.display = 'none';
+      renderProducts(cachedProducts);
+    });
+  }
+
+  window.clearCatalogSearch = function() {
+    if (catalogSearchInput) catalogSearchInput.value = '';
+    if (catalogSearchClear) catalogSearchClear.style.display = 'none';
+    renderProducts(cachedProducts);
+  };
+
   // Load Products from Server
   async function loadProducts() {
     try {
@@ -516,16 +548,30 @@
     });
 
     // Filter berdasarkan tab aktif: 'all', 'free', atau 'store'
-    const filteredProducts = sortedProducts.filter((p) => {
+    let filteredProducts = sortedProducts.filter((p) => {
       if (activeCatalogTab === 'free') return !p.is_paid;
       if (activeCatalogTab === 'store') return !!p.is_paid;
       return true;
     });
 
+    // Filter berdasarkan input pencarian live jika ada
+    const searchVal = (catalogSearchInput ? catalogSearchInput.value : '').trim().toLowerCase();
+    if (searchVal) {
+      filteredProducts = filteredProducts.filter((p) => {
+        const nameMatch = (p.name || '').toLowerCase().includes(searchVal);
+        const descMatch = (p.description || '').toLowerCase().includes(searchVal);
+        const variantMatch = (p.variants || []).some(v => (v.name || '').toLowerCase().includes(searchVal));
+        return nameMatch || descMatch || variantMatch;
+      });
+    }
+
     if (filteredProducts.length === 0) {
       productsContainer.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 36px;" class="neo-box">
-          <p style="font-size: 1.05rem; font-weight: 800;">Tidak ada produk pada kategori ini saat ini.</p>
+          <p style="font-size: 1.05rem; font-weight: 800;">
+            ${searchVal ? `Tidak ada produk yang cocok dengan pencarian "${escapeHtml(searchVal)}"` : 'Tidak ada produk pada kategori ini saat ini.'}
+          </p>
+          ${searchVal ? `<button onclick="window.clearCatalogSearch()" class="neo-btn neo-btn-white btn-sm" style="margin-top: 10px; font-size: 0.8rem;">Hapus Pencarian</button>` : ''}
         </div>
       `;
       return;
@@ -1046,6 +1092,7 @@
 
       renderHistory(cachedHistory);
       updateHistoryCount();
+      buildNotifications();
     } catch (err) {
       historyContainer.innerHTML = `
         <div style="text-align: center; padding: 24px;" class="neo-box">
@@ -1765,9 +1812,138 @@
     setTimeout(() => clearInterval(checkGsi), 5000);
   }
 
+  // ====================================================
+  // NOTIFICATION CENTER SYSTEM
+  // ====================================================
+  const btnNotificationBell = document.getElementById('btn-notification-bell');
+  const notifBadge = document.getElementById('notif-badge');
+  const notificationModalOverlay = document.getElementById('notification-modal-overlay');
+  const notifModalClose = document.getElementById('notif-modal-close');
+  const btnNotifCloseBottom = document.getElementById('btn-notif-close-bottom');
+  const btnMarkAllRead = document.getElementById('btn-mark-all-read');
+  const notifModalList = document.getElementById('notif-modal-list');
+
+  let activeNotifications = [];
+
+  function buildNotifications() {
+    const list = [
+      {
+        id: 'notif_welcome',
+        tag: 'PENGUMUMAN',
+        badgeClass: 'badge-cyan',
+        title: 'Selamat Datang di Hub Layanan',
+        time: 'Sistem',
+        desc: 'Jelajahi berbagai akun digital premium bergaransi dan nikmati kuota klaim gratis berkala setiap hari.'
+      }
+    ];
+
+    if (siteSettings && siteSettings.promo_coupon_code) {
+      list.unshift({
+        id: 'notif_promo_' + siteSettings.promo_coupon_code,
+        tag: 'PROMO KHUSUS',
+        badgeClass: 'badge-yellow',
+        title: `Voucher Diskon ${siteSettings.promo_discount_percent || 10}% Aktif!`,
+        time: 'Terbatas',
+        desc: `Gunakan kode kupon "${siteSettings.promo_coupon_code}" saat pemesanan untuk potongan harga langsung.`
+      });
+    }
+
+    if (cachedHistory && cachedHistory.length > 0) {
+      const latestOrder = cachedHistory[0];
+      const isPaid = latestOrder.is_paid || latestOrder.order_id;
+      list.unshift({
+        id: 'notif_order_' + (latestOrder.order_id || latestOrder.id),
+        tag: isPaid ? 'TRANSAKSI' : 'KLAIM',
+        badgeClass: 'badge-mint',
+        title: isPaid ? `Pesanan #${latestOrder.order_id || latestOrder.id} Siap Digunakan` : `Klaim ${latestOrder.product_name || 'Akun'} Berhasil`,
+        time: formatDate(latestOrder.created_at || latestOrder.claimed_at),
+        desc: `Akses akun Anda telah tersimpan dengan aman pada tab Riwayat.`
+      });
+    }
+
+    activeNotifications = list;
+    updateNotificationBadge();
+  }
+
+  function updateNotificationBadge() {
+    if (!notifBadge) return;
+    const readIds = JSON.parse(localStorage.getItem('revd_read_notifs') || '[]');
+    const unreadCount = activeNotifications.filter(n => !readIds.includes(n.id)).length;
+    if (unreadCount > 0) {
+      notifBadge.style.display = 'inline-block';
+      notifBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+    } else {
+      notifBadge.style.display = 'none';
+    }
+  }
+
+  function renderNotificationList() {
+    if (!notifModalList) return;
+    const readIds = JSON.parse(localStorage.getItem('revd_read_notifs') || '[]');
+
+    if (activeNotifications.length === 0) {
+      notifModalList.innerHTML = `
+        <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.85rem;">
+          Tidak ada pemberitahuan baru saat ini.
+        </div>
+      `;
+      return;
+    }
+
+    notifModalList.innerHTML = activeNotifications.map(n => {
+      const isRead = readIds.includes(n.id);
+      return `
+        <div class="neo-box" style="padding: 12px; background: ${isRead ? 'var(--surface-box)' : 'var(--bg-main)'}; border-left: ${isRead ? 'var(--border-thick)' : '4px solid #06b6d4'};">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="neo-badge ${n.badgeClass}" style="font-size: 0.65rem; padding: 1px 6px;">${n.tag}</span>
+            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;">${n.time}</span>
+          </div>
+          <div style="font-weight: 900; font-size: 0.85rem; color: var(--text-main); margin-bottom: 3px;">${escapeHtml(n.title)}</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">${escapeHtml(n.desc)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openNotificationModal() {
+    buildNotifications();
+    renderNotificationList();
+    if (notificationModalOverlay) notificationModalOverlay.classList.add('active');
+  }
+
+  function closeNotificationModal() {
+    if (notificationModalOverlay) notificationModalOverlay.classList.remove('active');
+  }
+
+  if (btnNotificationBell) {
+    btnNotificationBell.addEventListener('click', openNotificationModal);
+  }
+  if (notifModalClose) {
+    notifModalClose.addEventListener('click', closeNotificationModal);
+  }
+  if (btnNotifCloseBottom) {
+    btnNotifCloseBottom.addEventListener('click', closeNotificationModal);
+  }
+  if (notificationModalOverlay) {
+    notificationModalOverlay.addEventListener('click', (e) => {
+      if (e.target === notificationModalOverlay) closeNotificationModal();
+    });
+  }
+
+  if (btnMarkAllRead) {
+    btnMarkAllRead.addEventListener('click', () => {
+      const allIds = activeNotifications.map(n => n.id);
+      localStorage.setItem('revd_read_notifs', JSON.stringify(allIds));
+      updateNotificationBadge();
+      renderNotificationList();
+      showToast('Semua notifikasi ditandai telah dibaca.', 'info');
+    });
+  }
+
   // Initial load
   loadSiteSettings();
   checkUserAuth();
+  buildNotifications();
   const initialTab = getTabFromPath(window.location.pathname);
   if (window.history && window.history.replaceState) {
     window.history.replaceState({ tab: initialTab }, '', window.location.pathname);
