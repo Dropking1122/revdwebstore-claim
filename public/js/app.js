@@ -1469,13 +1469,16 @@
   const authAlert = document.getElementById('auth-alert');
   const authUsername = document.getElementById('auth-username');
   const authEmail = document.getElementById('auth-email');
+  const authWhatsapp = document.getElementById('auth-whatsapp');
   const authPassword = document.getElementById('auth-password');
   const fieldAuthEmail = document.getElementById('field-auth-email');
+  const fieldAuthWhatsapp = document.getElementById('field-auth-whatsapp');
   const btnAuthSubmit = document.getElementById('btn-auth-submit');
 
   const profileAvatarInitial = document.getElementById('profile-avatar-initial');
   const profileMemberUsername = document.getElementById('profile-member-username');
   const profileMemberEmail = document.getElementById('profile-member-email');
+  const profileMemberPhone = document.getElementById('profile-member-phone');
   const profileMemberToken = document.getElementById('profile-member-token');
   const profileMemberType = document.getElementById('profile-member-type');
   const profileStatClaims = document.getElementById('profile-stat-claims');
@@ -1511,6 +1514,7 @@
         tabAuthRegister.className = 'neo-btn neo-btn-white';
       }
       if (fieldAuthEmail) fieldAuthEmail.style.display = 'none';
+      if (fieldAuthWhatsapp) fieldAuthWhatsapp.style.display = 'none';
       if (btnAuthSubmit) btnAuthSubmit.textContent = 'MASUK KE AKUN';
     } else {
       if (tabAuthRegister) {
@@ -1520,6 +1524,7 @@
         tabAuthLogin.className = 'neo-btn neo-btn-white';
       }
       if (fieldAuthEmail) fieldAuthEmail.style.display = 'block';
+      if (fieldAuthWhatsapp) fieldAuthWhatsapp.style.display = 'block';
       if (btnAuthSubmit) btnAuthSubmit.textContent = 'DAFTAR AKUN BARU';
     }
   }
@@ -1549,6 +1554,14 @@
       if (profileAvatarInitial) profileAvatarInitial.textContent = initial;
       if (profileMemberUsername) profileMemberUsername.textContent = '@' + currentUser.username;
       if (profileMemberEmail) profileMemberEmail.textContent = currentUser.email || 'Tanpa Email';
+      if (profileMemberPhone) {
+        if (currentUser.phone) {
+          profileMemberPhone.style.display = 'block';
+          profileMemberPhone.textContent = 'WhatsApp: ' + currentUser.phone;
+        } else {
+          profileMemberPhone.style.display = 'none';
+        }
+      }
       if (profileMemberToken) profileMemberToken.textContent = currentUser.user_token;
       if (profileMemberType) profileMemberType.textContent = currentUser.has_google ? 'GOOGLE SSO' : 'MEMBER';
 
@@ -1590,9 +1603,15 @@
       const username = authUsername.value.trim();
       const password = authPassword.value;
       const email = authEmail ? authEmail.value.trim() : '';
+      const whatsapp = authWhatsapp ? authWhatsapp.value.trim() : '';
 
       if (!username || !password) {
         showAuthAlert('Username dan password wajib diisi.');
+        return;
+      }
+
+      if (authMode === 'register' && !whatsapp) {
+        showAuthAlert('Nomor WhatsApp wajib diisi.');
         return;
       }
 
@@ -1605,7 +1624,10 @@
         password,
         guest_token: USER_TOKEN,
       };
-      if (authMode === 'register' && email) payload.email = email;
+      if (authMode === 'register') {
+        if (email) payload.email = email;
+        payload.whatsapp = whatsapp;
+      }
 
       try {
         const res = await fetch(url, {
@@ -1632,6 +1654,7 @@
         authUsername.value = '';
         authPassword.value = '';
         if (authEmail) authEmail.value = '';
+        if (authWhatsapp) authWhatsapp.value = '';
 
         let succMsg = data.message || 'Berhasil masuk ke akun!';
         if (data.migrated && (data.migrated.orders > 0 || data.migrated.claims > 0)) {

@@ -211,6 +211,14 @@
               <input type="email" id="auth-email" class="neo-input" placeholder="email@contoh.com" autocomplete="email" />
             </div>
 
+            <div id="field-auth-whatsapp" style="display: none; margin-bottom: 12px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">
+                Nomor WhatsApp <span style="color: #BE123C;">*</span>
+              </label>
+              <input type="tel" id="auth-whatsapp" class="neo-input" placeholder="Contoh: 081234567890" autocomplete="tel" />
+              <span style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Wajib diisi untuk pengiriman data akun dan notifikasi transaksi.</span>
+            </div>
+
             <div style="margin-bottom: 16px;">
               <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">Password</label>
               <input type="password" id="auth-password" class="neo-input" placeholder="Minimal 6 karakter" autocomplete="current-password" required />
@@ -237,6 +245,7 @@
                 <span class="neo-badge badge-mint" style="font-size: 0.65rem;" id="profile-member-type">MEMBER</span>
               </div>
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" id="profile-member-email">email@example.com</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; display: none;" id="profile-member-phone">WA: -</div>
             </div>
           </div>
 

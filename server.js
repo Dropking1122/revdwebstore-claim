@@ -432,12 +432,24 @@ app.get('/api/settings', async (req, res) => {
 // Register Customer
 app.post('/api/auth/register', claimLimiter, async (req, res) => {
   try {
-    const { username, password, email, name, guest_token } = req.body || {};
+    const { username, password, email, phone, whatsapp, name, guest_token } = req.body || {};
     if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
       return res.status(400).json({ success: false, message: 'Username harus 3-30 karakter alfanumerik (huruf, angka, underscore).' });
     }
     if (!password || typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ success: false, message: 'Password minimal 6 karakter.' });
+    }
+
+    const rawPhone = String(whatsapp || phone || '').trim();
+    if (!rawPhone) {
+      return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi untuk verifikasi akun.' });
+    }
+    let cleanPhone = rawPhone.replace(/[^0-9+]/g, '');
+    if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.substring(1);
+    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
+    if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
+    if (!/^628[0-9]{8,13}$/.test(cleanPhone)) {
+      return res.status(400).json({ success: false, message: 'Format nomor WhatsApp tidak valid. Gunakan format 08xx atau 628xx (10-15 digit).' });
     }
 
     const cleanUsername = username.trim().toLowerCase();
@@ -456,9 +468,9 @@ app.post('/api/auth/register', claimLimiter, async (req, res) => {
     const userToken = `usr_${crypto.randomUUID()}`;
 
     const insertRes = await db.query(
-      `INSERT INTO customer_profiles (username, password_hash, user_token, name, email, role, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'user', NOW(), NOW()) RETURNING id, username, name, email, user_token`,
-      [cleanUsername, passwordHash, userToken, cleanName, cleanEmail]
+      `INSERT INTO customer_profiles (username, password_hash, user_token, name, phone, email, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW(), NOW()) RETURNING id, username, name, phone, email, user_token`,
+      [cleanUsername, passwordHash, userToken, cleanName, cleanPhone, cleanEmail]
     );
 
     const user = insertRes.rows[0];
@@ -484,6 +496,7 @@ app.post('/api/auth/register', claimLimiter, async (req, res) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        phone: user.phone,
         email: user.email,
         user_token: user.user_token,
       },
@@ -544,6 +557,7 @@ app.post('/api/auth/login', claimLimiter, async (req, res) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        phone: user.phone,
         email: user.email,
         user_token: user.user_token,
       },
@@ -656,7 +670,7 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/user/profile', requireUser, async (req, res) => {
   try {
     const userRes = await db.query(
-      'SELECT id, username, name, email, google_id, user_token, created_at FROM customer_profiles WHERE id = $1',
+      'SELECT id, username, name, phone, email, google_id, user_token, created_at FROM customer_profiles WHERE id = $1',
       [req.userSession.userId]
     );
 
@@ -675,6 +689,7 @@ app.get('/api/user/profile', requireUser, async (req, res) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        phone: user.phone,
         email: user.email,
         has_google: !!user.google_id,
         user_token: user.user_token,
